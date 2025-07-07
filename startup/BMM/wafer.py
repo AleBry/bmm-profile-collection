@@ -1,17 +1,18 @@
 
 from bluesky.plan_stubs import mv
 
-from lmfit.models import StepModel
 from numpy import array
 from sympy import geometry
 
 from BMM.kafka         import kafka_message
-from BMM.linescans     import linescan
+from BMM.linescans     import linescan, prepare_alignment_scan, fetch_peak_position_via_redis
 from BMM.functions     import whisper
 from BMM.resting_state import resting_state_plan
 
 from BMM import user_ns as user_ns_module
 user_ns = vars(user_ns_module)
+
+from rich import print as cprint
 
 
 class Wafer():
@@ -84,31 +85,41 @@ class Wafer():
             motor = user_ns['xafs_linx']
         else:
             motor = user_ns['xafs_liny']
+        yield from prepare_alignment_scan()
         uid = yield from linescan(motor, 'it', -2, 2, 41, dopluck=False)
         kafka_message({'close': 'last'})
-        table  = user_ns['db'][-1].table()
-        yy     = table[motor.name]
-        signal = table['It']/table['I0']
-        if float(signal[2]) > list(signal)[-2] :
-            ss     = -(signal - signal[2])
-        else:
-            ss     = signal - signal[2]
-        mod    = StepModel(form='erf')
-        pars   = mod.guess(ss, x=array(yy))
-        self.out    = mod.fit(ss, pars, x=array(yy))
-        whisper(self.out.fit_report(min_correl=0))
-        target = self.out.params['center'].value
-        kafka_message({'wafer'     : 'edge',
-                       'motor'     : motor.name,
-                       'xaxis'     : list(yy),
-                       'data'      : list(ss),
-                       'best_fit'  : list(self.out.best_fit),
-                       'center'    : target,
-                       'amplitude' : self.out.params['amplitude'].value,
-                       'uid'       : uid})
-                       
-        #self.out.plot()   # uncomment to plot directly rather than via BMM's kafka worker
+
+        kafka_message({'stepfit'    : True,
+                       'uid'        : 'last',
+                       'motor_name' : motor.name,
+                       'signal'     : 'It',
+                       'choice'     : 'peak'})
+        target = fetch_peak_position_via_redis()
         yield from mv(motor, target)
+        
+        # table  = user_ns['db'][-1].table()
+        # yy     = table[motor.name]
+        # signal = table['It']/table['I0']
+        # if float(signal[2]) > list(signal)[-2] :
+        #     ss     = -(signal - signal[2])
+        # else:
+        #     ss     = signal - signal[2]
+        # mod    = StepModel(form='erf')
+        # pars   = mod.guess(ss, x=array(yy))
+        # self.out    = mod.fit(ss, pars, x=array(yy))
+        # whisper(self.out.fit_report(min_correl=0))
+        # target = self.out.params['center'].value
+        # kafka_message({'wafer'     : 'edge',
+        #                'motor'     : motor.name,
+        #                'xaxis'     : list(yy),
+        #                'data'      : list(ss),
+        #                'best_fit'  : list(self.out.best_fit),
+        #                'center'    : target,
+        #                'amplitude' : self.out.params['amplitude'].value,
+        #                'uid'       : uid})
+                       
+        # #self.out.plot()   # uncomment to plot directly rather than via BMM's kafka worker
+        # yield from mv(motor, target)
         yield from resting_state_plan()
-        print(f'Edge found at X={user_ns["xafs_x"].position} and Y={user_ns["xafs_y"].position}')
-        print(f'do wafer.push() to add this point to the list for finding the wafer circumcenter')
+        print(f'\nEdge found at X={user_ns["xafs_x"].position} and Y={user_ns["xafs_y"].position}')
+        cprint(f'do [yellow2]wafer.push()[/yellow2] to add this point to the list for finding the wafer circumcenter\n')

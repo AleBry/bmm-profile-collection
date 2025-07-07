@@ -151,7 +151,9 @@ class LineScan():
             self.axes.set_facecolor((0.95, 0.95, 0.95))
             self.line, = self.axes.plot([],[])
         self.initial = 0
-        self.fluo_detector = kwargs['fluo_detector']
+        self.fluo_detector = ''
+        if 'fluo_detector' in kwargs:
+            self.fluo_detector = kwargs['fluo_detector']
 
         self.detector = rkvs.get('BMM:xspress3').decode('utf-8')
         if self.detector == '1' and self.numerator in self.fluorescence_like:
@@ -231,6 +233,7 @@ class LineScan():
             self.fl.grid(which='major', axis='both')
             self.fl.set_facecolor((0.95, 0.95, 0.95))
             self.fl.set_ylabel('fluorescence (SDD)')
+
             self.tr = self.figure.add_subplot(self.gs[1, 0])
             self.tr.grid(which='major', axis='both')
             self.tr.set_facecolor((0.95, 0.95, 0.95))
@@ -246,15 +249,16 @@ class LineScan():
                 self.description = 'fluorescence (1 channel)'
                 self.denominator = 'I0'
                 self.fl.set_ylabel('fluorescence (1 channel)')
-                self.fl.legend(loc='best', shadow=True)
             else:
-                self.line, = self.fl.plot([],[])
-                self.linetr, = self.tr.plot([],[], label='trans')
+                self.line, = self.fl.plot([],[], label='fluorescence')
+                self.linetr, = self.tr.plot([],[], label='transmission', color='tab:orange')
                 self.numerator = 'If'
                 self.description = 'fluorescence (SDD)'
                 self.denominator = 'I0'
             if self.fluo_detector == 'Dante':  # delete me once testing is finished!
                 self.denominator = None
+            self.fl.legend(loc='best', shadow=True)
+            self.tr.legend(loc='best', shadow=True)
                 
 
         ## fluorescence (1 channel): plot If/I0

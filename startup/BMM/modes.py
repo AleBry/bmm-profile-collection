@@ -184,6 +184,38 @@ def table_height(mode=None, by=None, pitch=None):
           yield from null()
 
 
+def verify_limits(targets):
+     '''Take the list of mv() arguments generated in change_mode and check
+     each motor target position against that motor's limit.
+
+     This list is an awkward data structure for this application:
+ 
+       base = [dm3_bct,         float(MODEDATA['dm3_bct'][mode]),
+               xafs_table.yu,   float(MODEDATA['xafs_yu'][mode]),
+               xafs_table.ydo,  float(MODEDATA['xafs_ydo'][mode]),
+               xafs_table.ydi,  float(MODEDATA['xafs_ydi'][mode]),
+               ...
+              ]
+
+     This structure explains the awkward looping over list elements.
+
+     '''
+
+     is_ok = True
+     for i in range(int(len(targets)/2)):
+          #print(targets[2*i].name, targets[2*i+1])
+          motor = targets[2*i]
+          motorname = targets[2*i].name
+          value = targets[2*i+1]
+          if value < motor.limits[0]:
+               error_msg(f'Target value for {motorname} ({value}) is outside the lower limit of {motor.limits[0]}')
+               is_ok = False
+          if value > motor.limits[1]:
+               error_msg(f'Target value for {motorname} ({value}) is outside the upper limit of {motor.limits[1]}')
+               is_ok = False
+     return is_ok
+     
+          
 
 def change_mode(mode=None, prompt=True, edge=None, reference=None, bender=True, insist=False, no_ref=False):
      '''Move the photon delivery system to a new mode. 
@@ -334,16 +366,18 @@ def change_mode(mode=None, prompt=True, edge=None, reference=None, bender=True, 
      ##########################
      # do the motor movements #
      ##########################
-     yield from dcm.kill_plan()
-     if dm3_bct.ampen.get() == 0:
-          yield from mv(dm3_bct.enable_cmd, 1)
-     #yield from mv(dm3_bct.kill_cmd, 1) # need to explicitly kill this before
-                                        # starting a move, it is one of the
-                                        # motors that reports MOVN=1 even when
-                                        # still
-     yield from sleep(0.2)
-     yield from mv(dm3_bct.kill_cmd, 1)
+     # yield from dcm.kill_plan()
+     # if dm3_bct.ampen.get() == 0:
+     #      yield from mv(dm3_bct.enable_cmd, 1)
+     # #yield from mv(dm3_bct.kill_cmd, 1) # need to explicitly kill this before
+     #                                    # starting a move, it is one of the
+     #                                    # motors that reports MOVN=1 even when
+     #                                    # still
+     # yield from sleep(0.2)
+     # yield from mv(dm3_bct.kill_cmd, 1)
+     yield from wiggle_bct()
 
+     
      #print(mode, current_mode, insist)
 
      report(f'Moving from mode {current_mode} to mode {mode}', slack=True)
@@ -363,6 +397,9 @@ def change_mode(mode=None, prompt=True, edge=None, reference=None, bender=True, 
           yield from mv(user_ns['slits3'].vsize, 0.3)
      
      if mode in ('D', 'E', 'F') and current_mode in ('D', 'E', 'F') and insist is False:
+          if verify_limits(base) is False:
+               bold_msg('Cannot change mode. Some target values are outside motor limits.')
+               raise ValueError
           try:
                report('M2 remaining collimated', slack=True)
                yield from mv(*base)
@@ -381,7 +418,7 @@ def change_mode(mode=None, prompt=True, edge=None, reference=None, bender=True, 
                     user_ns['ks'].cycle('m2')
                     user_ns['ks'].cycle('m3')
                     user_ns['ks'].cycle('dm3')
-                    wiggle_bct()
+                    yield from wiggle_bct()
                     #dm3_bct.clear_encoder_loss()
                     yield from sleep(1)
                     try:
@@ -390,6 +427,9 @@ def change_mode(mode=None, prompt=True, edge=None, reference=None, bender=True, 
                          pass
                
      elif mode in ('A', 'B', 'C') and current_mode in ('A', 'B', 'C') and insist is False: # no need to move M2
+          if verify_limits(base) is False:
+               bold_msg('Cannot change mode. Some target values are outside motor limits.')
+               raise ValueError
           try:
                report('M2 remaining focused', slack=True)
                yield from mv(*base)
@@ -408,7 +448,7 @@ def change_mode(mode=None, prompt=True, edge=None, reference=None, bender=True, 
                     user_ns['ks'].cycle('m2')
                     user_ns['ks'].cycle('m3')
                     user_ns['ks'].cycle('dm3')
-                    wiggle_bct()
+                    yield from wiggle_bct()
                     #dm3_bct.clear_encoder_loss()
                     yield from sleep(1)
                     try:
@@ -432,6 +472,9 @@ def change_mode(mode=None, prompt=True, edge=None, reference=None, bender=True, 
           base.extend([m2.yu,  float(MODEDATA['m2_yu'][mode])])
           base.extend([m2.ydo, float(MODEDATA['m2_ydo'][mode])])
           base.extend([m2.ydi, float(MODEDATA['m2_ydi'][mode])])
+          if verify_limits(base) is False:
+               bold_msg('Cannot change mode. Some target values are outside motor limits.')
+               raise ValueError
           try:
                report('Changing M2 setup', slack=True)
                yield from mv(*base)
@@ -451,7 +494,7 @@ def change_mode(mode=None, prompt=True, edge=None, reference=None, bender=True, 
                     user_ns['ks'].cycle('m2')
                     user_ns['ks'].cycle('m3')
                     user_ns['ks'].cycle('dm3')
-                    wiggle_bct()
+                    yield from wiggle_bct()
                     #dm3_bct.clear_encoder_loss()
                     yield from sleep(1)
                     try:
@@ -466,6 +509,7 @@ def change_mode(mode=None, prompt=True, edge=None, reference=None, bender=True, 
      yield from mv(dm3_bct.kill_cmd, 1)
      yield from m2.kill_jacks()
      yield from m3.kill_jacks()
+     yield from dcm.kill_plan()
 
      BMMuser.pds_mode = mode
      RE.msg_hook = BMM_msg_hook

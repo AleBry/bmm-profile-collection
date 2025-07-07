@@ -487,8 +487,8 @@ class EndStationEpicsMotor(EpicsMotor):
     hlm = Cpt(EpicsSignal, '.HLM', kind='config')
     llm = Cpt(EpicsSignal, '.LLM', kind='config')
     kill_cmd = Cpt(EpicsSignal, ':KILL', kind='config')
-    spmg = Cpt(EpicsSignal, '.SPMG', kind='normal')
-    setpoint = Cpt(EpicsSignal, '.VAL', kind='normal')
+    spmg = Cpt(EpicsSignal, '.SPMG', kind='omitted')
+    setpoint = Cpt(EpicsSignal, '.VAL', kind='omitted')
 
     def wh(self):
         return(round(self.user_readback.get(), 3))

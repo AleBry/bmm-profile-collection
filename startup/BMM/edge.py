@@ -134,9 +134,9 @@ def xafs_table_ok():
     return True
 
 def xrd_mode(energy=8600):
-     '''Thin wrapper around change_mode() to prepare for XRD measurements.
+     '''Thin wrapper around change_edge() to prepare for XRD measurements.
      '''
-     yield from change_edge('Ni', xrd=True, energy=energy)
+     yield from change_edge('Ni', xrd=True, energy=energy, slits=True, mirror=False)
 
 
 def quick_change(el, focus=False, edge='K', target=300., reference=False):

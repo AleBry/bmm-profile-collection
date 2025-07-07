@@ -137,6 +137,7 @@ RE.msg_hook = ts_msg_hook
 bmm_catalog = None
 
 if not is_re_worker_active():
+    print('Connecting to Tiled: bmm_catalog, db')
     from tiled.client import from_profile
     bmm_catalog = from_profile('bmm')
     db = Broker(bmm_catalog)

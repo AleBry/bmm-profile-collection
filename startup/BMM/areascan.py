@@ -1,3 +1,9 @@
+try:
+    from bluesky_queueserver import is_re_worker_active
+except ImportError:
+    # TODO: delete this when 'bluesky_queueserver' is distributed as part of collection environment
+    def is_re_worker_active():
+        return False
 
 from bluesky.plans import grid_scan
 from bluesky.callbacks import LiveGrid
@@ -223,8 +229,9 @@ def areascan(detector,
         db = user_ns['db']
         BMM_clear_suspenders()
         if BMMuser.final_log_entry is True:
-            BMM_log_info('areascan finished\n\tuid = %s, scan_id = %d' % (bmm_catalog[-1].metadata['start']['uid'],
-                                                                          bmm_catalog[-1].metadata['start']['scan_id']))
+            if is_re_worker_active() is False:
+                BMM_log_info('areascan finished\n\tuid = %s, scan_id = %d' % (bmm_catalog[-1].metadata['start']['uid'],
+                                                                              bmm_catalog[-1].metadata['start']['scan_id']))
         yield from resting_state_plan()
         user_ns['RE'].msg_hook = BMM_msg_hook
         BMMuser.x, BMMuser.y, BMMuser.motor, BMMuser.motor2, BMMuser.fig, BMMuser.ax = [None] * 6

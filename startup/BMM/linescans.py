@@ -65,7 +65,9 @@ def unset_mouse_click():
     rkvs.set('BMM:mouse_event:value2', '')
     rkvs.set('BMM:mouse_event:motor2', '')
 
-        
+
+
+    
 def pluck(suggested_motor=None):
     '''Negotiate an interaction with the Kafka consumer to pluck a
     position from a plot, stash that position and its motor in Redis,
@@ -205,6 +207,45 @@ def wiggle_bct(tries=3):
             yield from null()
             return False
 
+UNSET_PEAK_POSITION = -10_000_000_000
+        
+def prepare_alignment_scan(inttime=0.1):
+    '''Prepare for an alignment scan:
+
+    1. Set the redis parameter used to communicate the alignment
+       result back from the Kafka client to its unset value.
+
+    2. Set the dwell time to a value suitable for an alignment scan.
+       The default is 0.1 seconds, but can be overwritten if need be.
+
+    '''
+    rkvs.set('BMM:peak_position', UNSET_PEAK_POSITION - 0.1)
+    yield from mv(_locked_dwell_time, inttime)
+    
+
+def fetch_peak_position_via_redis(maxtries=6, verbose=False):
+    '''Retrieve a result found by the Kafka consumer and posted to redis.
+
+    The function prepare_alignment_scan() should have been called
+    prior to the alignment scan.
+
+    This function waits increasing times for that parameter in redis
+    to be set to value bigger than UNSET_PEAK_POSITION.  This gives
+    the kafka consumer some time to do its thing.
+
+    '''
+    time.sleep(0.25)
+    top = float(rkvs.get('BMM:peak_position').decode('utf8'))
+    count = 0
+    #if verbose: print(f"{count = }, {top = }")
+    while top < UNSET_PEAK_POSITION:
+        time.sleep(0.1 * 2**count)
+        top = float(rkvs.get('BMM:peak_position').decode('utf8'))
+        count += 1
+        if verbose: print(f"{count = }, {answer = }")
+        if count > maxtries:
+            return(None)
+    return top
 
 def slit_height(start=-1.5, stop=1.5, nsteps=31, move=False, force=False, slp=1.0, choice='peak'):
     '''Perform a relative scan of the DM3 BCT motor around the current
@@ -247,8 +288,10 @@ def slit_height(start=-1.5, stop=1.5, nsteps=31, move=False, force=False, slp=1.
 
             #if slit_height < 0.5:
             #    yield from mv(slits3.vsize, 0.5)
-            
-            yield from mv(_locked_dwell_time, 0.1)
+
+            yield from prepare_alignment_scan()
+            #rkvs.set('BMM:peak_position', -10_000_000_000.1)
+            #yield from mv(_locked_dwell_time, 0.1)
             yield from mv(motor.velocity, 0.4)
             yield from mv(motor.kill_cmd, 1)
 
@@ -265,22 +308,33 @@ def slit_height(start=-1.5, stop=1.5, nsteps=31, move=False, force=False, slp=1.
             kafka_message({'linescan': 'stop',})
             
             user_ns['RE'].msg_hook = BMM_msg_hook
-            BMM_log_info('slit height scan: %s\tuid = %s, scan_id = %d' %
-                         (line1, uid, user_ns['db'][-1].start['scan_id']))
+            BMM_log_info(f'slit height scan: {line1}\tuid = {uid}')
             if motor.amfe.get() or motor.amfae.get():
                 user_ns['ks'].cycle('dm3')
             if move:
-                t  = user_ns['db'][-1].table()
-                signal = t['I0']
-                #if get_mode() in ('A', 'B', 'C'):
-                #    position = com(signal)
-                #else:
-                position = peak(signal)
-                top = t[motor.name][position]
+                kafka_message({'close': 'last'})
+                kafka_message({'peakfit' : True,
+                               'uid' : uid,
+                               'motor_name' : motor.name,
+                               'signal' : 'I0',
+                               'choice' : choice})
+                top = fetch_peak_position_via_redis()
+                if top is None:
+                    error_msg('Failed to find rocking curve peak position.')
+                    raise ValueError('Failed to find slit_height peak position.')
+                yield from mv(motor, top)
                 
-                yield from sleep(slp)
-                yield from mv(motor.kill_cmd, 1)
-                yield from sleep(slp)
+                # t  = user_ns['db'][-1].table()
+                # signal = t['I0']
+                # #if get_mode() in ('A', 'B', 'C'):
+                # #    position = com(signal)
+                # #else:
+                # position = peak(signal)
+                # top = t[motor.name][position]
+                
+                #yield from sleep(slp)
+                #yield from mv(motor.kill_cmd, 1)
+                #yield from sleep(slp)
                 yield from mv(motor, top)
 
             else:
@@ -296,7 +350,6 @@ def slit_height(start=-1.5, stop=1.5, nsteps=31, move=False, force=False, slp=1.
                 yield from sleep(slp)
                 yield from pluck(suggested_motor=motor)
                 #yield from move_after_scan(motor)
-            yield from mv(_locked_dwell_time, 0.5)
         yield from scan_slit(slp)
 
     def cleanup_plan(slp):
@@ -370,8 +423,10 @@ def mirror_pitch(start=None, stop=None, nsteps=41, mirror='m3', move=False, forc
 
             #if slit_height < 0.5:
             #    yield from mv(slits3.vsize, 0.5)
-            
-            yield from mv(_locked_dwell_time, 0.1)
+
+            yield from prepare_alignment_scan()
+            #rkvs.set('BMM:peak_position', -10_000_000_000.1)
+            #yield from mv(_locked_dwell_time, 0.1)
 
             kafka_message({'linescan': 'start',
                            'motor' : motor.name,
@@ -381,15 +436,18 @@ def mirror_pitch(start=None, stop=None, nsteps=41, mirror='m3', move=False, forc
             kafka_message({'linescan': 'stop',})
             
             user_ns['RE'].msg_hook = BMM_msg_hook
-            BMM_log_info('slit height scan: %s\tuid = %s, scan_id = %d' %                         (line1, uid, user_ns['db'][-1].start['scan_id']))
+            BMM_log_info(f'mirror pitch scan: {line1}\tuid = {uid}')
             if move:
-                t  = user_ns['db'][-1].table()
-                signal = t['I0']
-                #if get_mode() in ('A', 'B', 'C'):
-                #    position = com(signal)
-                #else:
-                position = peak(signal)
-                top = t[motor.name][position]
+                kafka_message({'close': 'last'})
+                kafka_message({'peakfit' : True,
+                               'uid' : uid,
+                               'motor_name' : motor.name,
+                               'signal' : 'I0',
+                               'choice' : choice})
+                top = fetch_peak_position_via_redis()
+                if top is None:
+                    error_msg('Failed to find rocking curve peak position.')
+                    raise ValueError('Failed to find rocking curve peak position.')
                 yield from mv(motor, top)
 
             else:
@@ -400,7 +458,6 @@ def mirror_pitch(start=None, stop=None, nsteps=41, mirror='m3', move=False, forc
                     if action[0].lower() == 'n' or action[0].lower() == 'q':
                         return(yield from null())
                 yield from pluck(suggested_motor=motor)
-            yield from mv(_locked_dwell_time, 0.5)
         yield from scan_pitch()
 
     def cleanup_plan():
@@ -484,7 +541,9 @@ def rocking_curve(start=-0.10, stop=0.10, nsteps=101, detector='I0', choice='pea
             line1 = '%s, %s, %.3f, %.3f, %d -- starting at %.3f\n' % \
                     (motor.name, sgnl, start, stop, nsteps, motor.user_readback.get())
 
-            yield from mv(_locked_dwell_time, 0.1)
+            yield from prepare_alignment_scan()
+            #rkvs.set('BMM:peak_position', -10_000_000_000.1)
+            #yield from mv(_locked_dwell_time, 0.1)
             yield from dcm.kill_plan()
 
             yield from mv(slits3.top, height/2.0, slits3.bottom, -1*height/2.0)
@@ -498,30 +557,42 @@ def rocking_curve(start=-0.10, stop=0.10, nsteps=101, detector='I0', choice='pea
                            'fluo_detector': None,})
             uid = yield from rel_scan(dets, motor, start, stop, nsteps, md={'plan_name' : f'rel_scan linescan {motor.name} I0'})
             kafka_message({'linescan': 'stop',})
+            kafka_message({'close': 'last'})
+            kafka_message({'peakfit' : True,
+                           'uid' : uid,
+                           'motor_name' : 'dcm_pitch',
+                           'signal' : 'I0',
+                           'choice' : choice})
 
-            t  = user_ns['db'][-1].table()
-            signal = t[sgnl]
-            if choice.lower() == 'com':
-                position = com(signal)
-                top      = t[motor.name][position]
-            elif choice.lower() == 'fit':
-                pitch    = t['dcm_pitch']
-                mod      = SkewedGaussianModel()
-                pars     = mod.guess(signal, x=pitch)
-                out      = mod.fit(signal, pars, x=pitch)
-                whisper(out.fit_report(min_correl=0))
-                out.plot()
-                top      = out.params['center'].value
-            else:
-                position = peak(signal)
-                top      = t[motor.name][position]
+            top = fetch_peak_position_via_redis()
+            if top is None:
+                error_msg('Failed to find rocking curve peak position.')
+                raise ValueError('Failed to find rocking curve peak position.')
+                
+            # t  = user_ns['db'][-1].table()
+            # signal = t[sgnl]
+            # if choice.lower() == 'com':
+            #     position = com(signal)
+            #     top      = t[motor.name][position]
+            # elif choice.lower() == 'fit':
+            #     pitch    = t['dcm_pitch']
+            #     mod      = SkewedGaussianModel()
+            #     pars     = mod.guess(signal, x=pitch)
+            #     out      = mod.fit(signal, pars, x=pitch)
+            #     whisper(out.fit_report(min_correl=0))
+            #     out.plot()
+            #     top      = out.params['center'].value
+            # else:
+            #     position = peak(signal)
+            #     top      = t[motor.name][position]
 
             yield from mv(motor.kill_cmd, 1)
             yield from sleep(1.0)
             user_ns['RE'].msg_hook = BMM_msg_hook
 
-            BMM_log_info('rocking curve scan: %s\tuid = %s, scan_id = %d' %
-                         (line1, uid, user_ns['db'][-1].start['scan_id']))
+            #BMM_log_info('rocking curve scan: %s\tuid = %s, scan_id = %d' %
+            #             (line1, uid, user_ns['db'][-1].start['scan_id']))
+            BMM_log_info(f'rocking curve scan: {line1}\tuid = {uid}')
             yield from mv(motor, top)
             #if sgnl == 'Bicron':
             #    yield from mv(slitsg.vsize, gonio_slit_height)
@@ -600,7 +671,9 @@ def hcenter(start=-1, stop=1, nsteps=41, move=False, force=False, choice='peak')
         rkvs.set('BMM:scan:estimated', 0)
 
         def scan_hcenter():
-            yield from mv(_locked_dwell_time, 0.1)
+            yield from prepare_alignment_scan()
+            #rkvs.set('BMM:peak_position', -10_000_000_000.1)
+            #yield from mv(_locked_dwell_time, 0.1)
 
             kafka_message({'linescan': 'start',
                            'motor' : motor.name,
@@ -610,15 +683,18 @@ def hcenter(start=-1, stop=1, nsteps=41, move=False, force=False, choice='peak')
             kafka_message({'linescan': 'stop',})
             
             user_ns['RE'].msg_hook = BMM_msg_hook
-            BMM_log_info('slit height scan: %s\tuid = %s, scan_id = %d' %                         (line1, uid, user_ns['db'][-1].start['scan_id']))
+            BMM_log_info(f'hcenter scan: {line1}\tuid = {uid}')
             if move:
-                t  = user_ns['db'][-1].table()
-                signal = t['I0']
-                #if get_mode() in ('A', 'B', 'C'):
-                #    position = com(signal)
-                #else:
-                position = peak(signal)
-                top = t[motor.name][position]
+                kafka_message({'close': 'last'})
+                kafka_message({'peakfit' : True,
+                               'uid' : uid,
+                               'motor_name' : motor.name,
+                               'signal' : 'I0',
+                               'choice' : choice})
+                top = fetch_peak_position_via_redis()
+                if top is None:
+                    error_msg('Failed to find rocking curve peak position.')
+                    raise ValueError('Failed to find rocking curve peak position.')
                 yield from mv(motor, top)
 
             else:
@@ -629,7 +705,6 @@ def hcenter(start=-1, stop=1, nsteps=41, move=False, force=False, choice='peak')
                     if action[0].lower() == 'n' or action[0].lower() == 'q':
                         return(yield from null())
                 yield from pluck(suggested_motor=motor)
-            yield from mv(_locked_dwell_time, 0.5)
         yield from scan_hcenter()
 
     def cleanup_plan():
@@ -740,46 +815,69 @@ def rectangle_scan(motor=None, start=-20, stop=20, nsteps=41, detector='It',
                 fluo_detector = user_ns['xs'].name
             elif detector == 'Dante':
                 fluo_detector = 'Dante'
-            kafka_message({'linescan': 'start',
-                           'motor' : motor.name,
-                           'detector' : detector.capitalize(),
-                           'fluo_detector': fluo_detector,})
+            yield from prepare_alignment_scan()
+            kafka_message({'linescan'      : 'start',
+                           'motor'         : motor.name,
+                           'detector'      : detector.capitalize(),
+                           'fluo_detector' : fluo_detector,})
             uid = yield from rel_scan(dets, motor, start, stop, nsteps, md={**md, 'plan_name' : f'rel_scan linescan {motor.name} I0'})
             kafka_message({'linescan': 'stop',})
-            
-            t  = user_ns['db'][-1].table()
-            if detector.lower() == 'if':
-                signal   = numpy.array((t[BMMuser.xs1]+t[BMMuser.xs2]+t[BMMuser.xs3]+t[BMMuser.xs4])/t['I0'])
-            elif detector.lower() == 'it':
-                signal   = numpy.array(t['It']/t['I0'])
-            elif detector.lower() == 'ir':
-                signal   = numpy.array(t['Ir']/t['It'])
-
-            signal = signal - signal[0]
-            if negate is True:
-                signal = -1 * signal
-            pos      = numpy.array(t[motor.name])
-            mod      = RectangleModel(form='erf')
-            pars     = mod.guess(signal, x=pos)
-            out      = mod.fit(signal, pars, x=pos)
-            whisper(out.fit_report(min_correl=0))
-            if chore == 'find_slot':
-                kafka_message({'close': 'last'})
-                kafka_message({'align_wheel' : 'find_slot',
-                               'motor'       : motor.name,
-                               'detector'    : detector.lower(),
-                               'xaxis'       : list(pos),
-                               'data'        : list(signal),
-                               'best_fit'    : list(out.best_fit),
-                               'center'      : out.params['midpoint'].value,
-                               'amplitude'   : out.params['amplitude'].value,
-                               'uid'         : uid})
 
             if move is True:
-                yield from mv(motor, out.params['midpoint'].value)
-            bold_msg(f'Found center at {motor.name} = {motor.position}')
-            for k in ('center1', 'center2', 'sigma1', 'sigma2', 'amplitude', 'midpoint'):
-                rkvs.set(f'BMM:lmfit:{k}', out.params[k].value)
+                kafka_message({'close': 'all'})
+                kafka_message({'rectanglefit' : True,
+                               'uid'          : uid,
+                               'signal'       : detector.capitalize(),
+                               'motor_name'   : motor.name })
+
+                top = fetch_peak_position_via_redis()
+                if top is None:
+                    error_msg('Failed to find rectangle midpoint.')
+                    raise ValueError('Failed to find rectangle midpoint.')
+                yield from mv(motor, top)
+                bold_msg(f'Found center at {motor.name} = {motor.position}')
+            else:
+                print()
+                action = animated_prompt('Pluck motor position from the plot? ' + PROMPTNC)
+                if action != '':
+                    if action[0].lower() == 'n' or action[0].lower() == 'q':
+                        return(yield from null())
+                yield from pluck(suggested_motor=motor)
+                
+            
+            # t  = user_ns['db'][-1].table()
+            # if detector.lower() == 'if':
+            #     signal   = numpy.array((t[BMMuser.xs1]+t[BMMuser.xs2]+t[BMMuser.xs3]+t[BMMuser.xs4])/t['I0'])
+            # elif detector.lower() == 'it':
+            #     signal   = numpy.array(t['It']/t['I0'])
+            # elif detector.lower() == 'ir':
+            #     signal   = numpy.array(t['Ir']/t['It'])
+
+            # signal = signal - signal[0]
+            # if negate is True:
+            #     signal = -1 * signal
+            # pos      = numpy.array(t[motor.name])
+            # mod      = RectangleModel(form='erf')
+            # pars     = mod.guess(signal, x=pos)
+            # out      = mod.fit(signal, pars, x=pos)
+            # whisper(out.fit_report(min_correl=0))
+            # if chore == 'find_slot':
+            #     kafka_message({'close': 'last'})
+            #     kafka_message({'align_wheel' : 'find_slot',
+            #                    'motor'       : motor.name,
+            #                    'detector'    : detector.lower(),
+            #                    'xaxis'       : list(pos),
+            #                    'data'        : list(signal),
+            #                    'best_fit'    : list(out.best_fit),
+            #                    'center'      : out.params['midpoint'].value,
+            #                    'amplitude'   : out.params['amplitude'].value,
+            #                    'uid'         : uid})
+
+            # if move is True:
+            #     yield from mv(motor, out.params['midpoint'].value)
+            #bold_msg(f'Found center at {motor.name} = {motor.position}')
+            #for k in ('center1', 'center2', 'sigma1', 'sigma2', 'amplitude', 'midpoint'):
+            #    rkvs.set(f'BMM:lmfit:{k}', out.params[k].value)
 
         yield from doscan(filename)
         
@@ -831,6 +929,7 @@ def peak_scan(motor=None, start=-20, stop=20, nsteps=41, detector='It', find='ma
             line1 = '%s, %s, %.3f, %.3f, %d -- starting at %.3f\n' % \
                     (motor.name, sgnl, start, stop, nsteps, motor.user_readback.get())
 
+            yield from prepare_alignment_scan()
             if plotting_mode(p['mode']) == 'fluorescence':
                 fluo_detector = user_ns['xs'].name
             elif detector == 'Dante':
@@ -842,43 +941,52 @@ def peak_scan(motor=None, start=-20, stop=20, nsteps=41, detector='It', find='ma
             uid = yield from rel_scan(dets, motor, start, stop, nsteps, md={'plan_name' : f'rel_scan linescan {motor.name} I0'})
             kafka_message({'linescan': 'stop',})
 
-            t  = user_ns['db'][-1].table()
-            if detector.lower() == 'if':
-                signal   = numpy.array((t[BMMuser.xs1]+t[BMMuser.xs2]+t[BMMuser.xs3]+t[BMMuser.xs4])/t['I0'])
-            elif detector.lower() == 'it':
-                signal   = numpy.array(t['It']/t['I0'])
-            elif detector.lower() == 'ir':
-                signal   = numpy.array(t['Ir']/t['It'])
-
-            signal = signal - signal[0]
-            if find == 'min':
-                signal = -1 * signal
-            pos      = numpy.array(t[motor.name])
-
-            if choice.lower() == 'com':
-                position = com(signal)
-                top      = t[motor.name][position]
-            elif choice.lower() == 'fit':
-                pitch    = t[motor_name]
-                mod      = SkewedGaussianModel()
-                pars     = mod.guess(signal, x=pitch)
-                out      = mod.fit(signal, pars, x=pitch)
-                whisper(out.fit_report(min_correl=0))
-                out.plot()
-                top      = out.params['center'].value
-            else:
-                position = peak(signal)
-                top      = t[motor.name][position]
+            kafka_message({'stepfit'    : True,
+                           'uid'        : uid,
+                           'motor_name' : motor.name,
+                           'signal'     : 'It',
+                           'choice'     : 'peak'})
+            target = fetch_peak_position_via_redis()
+            yield from mv(motor, target)
             
-            thisagg = matplotlib.get_backend()
-            matplotlib.use('Agg') # produce a plot without screen display
-            out.plot()
-            if filename is None:
-                filename = os.path.join(user_ns['BMMuser'].folder, 'snapshots', 'toss.png')
-            plt.savefig(filename)
-            matplotlib.use(thisagg) # return to screen display
             
-            yield from mv(motor, top)
+            # t  = user_ns['db'][-1].table()
+            # if detector.lower() == 'if':
+            #     signal   = numpy.array((t[BMMuser.xs1]+t[BMMuser.xs2]+t[BMMuser.xs3]+t[BMMuser.xs4])/t['I0'])
+            # elif detector.lower() == 'it':
+            #     signal   = numpy.array(t['It']/t['I0'])
+            # elif detector.lower() == 'ir':
+            #     signal   = numpy.array(t['Ir']/t['It'])
+
+            # signal = signal - signal[0]
+            # if find == 'min':
+            #     signal = -1 * signal
+            # pos      = numpy.array(t[motor.name])
+
+            # if choice.lower() == 'com':
+            #     position = com(signal)
+            #     top      = t[motor.name][position]
+            # elif choice.lower() == 'fit':
+            #     pitch    = t[motor_name]
+            #     mod      = SkewedGaussianModel()
+            #     pars     = mod.guess(signal, x=pitch)
+            #     out      = mod.fit(signal, pars, x=pitch)
+            #     whisper(out.fit_report(min_correl=0))
+            #     out.plot()
+            #     top      = out.params['center'].value
+            # else:
+            #     position = peak(signal)
+            #     top      = t[motor.name][position]
+            
+            # thisagg = matplotlib.get_backend()
+            # matplotlib.use('Agg') # produce a plot without screen display
+            # out.plot()
+            # if filename is None:
+            #     filename = os.path.join(user_ns['BMMuser'].folder, 'snapshots', 'toss.png')
+            # plt.savefig(filename)
+            # matplotlib.use(thisagg) # return to screen display
+            
+            # yield from mv(motor, top)
             bold_msg(f'Found peak at {motor.name} = {motor.position}')
             for k in ('center1', 'center2', 'sigma1', 'sigma2', 'amplitude', 'midpoint'):
                 rkvs.set(f'BMM:lmfit:{k}', out.params[k].value)
@@ -1119,11 +1227,10 @@ def linescan(detector, axis, start, stop, nsteps, dopluck=True, force=False, sta
             uid = yield from rel_scan(dets, motor, start, stop, nsteps, md={**thismd, **md, 'plan_name' : f'rel_scan linescan {motor.name} {detector}'})
             return uid
 
-        uid = yield from scan_xafs_motor(dets, thismotor, start, stop, nsteps)
+        thisuid = yield from scan_xafs_motor(dets, thismotor, start, stop, nsteps)
         kafka_message({'linescan': 'stop',})
         
-        BMM_log_info('linescan: %s\tuid = %s, scan_id = %d' %
-                     (line1, uid, user_ns['db'][-1].start['scan_id']))
+        BMM_log_info(f'linescan: {line1}\tuid = {thisuid}')
         if dopluck is True:
             #action = input('\n' + bold_msg('Pluck motor position from the plot? ' + PROMPT))
             print()
@@ -1138,7 +1245,7 @@ def linescan(detector, axis, start, stop, nsteps, dopluck=True, force=False, sta
                 with open(os.path.join(WORKSPACE, 'logs', 'linescan_evaluation.txt'), 'a') as f:
                     f.write(f'''{now()}
      mode = {thismotor.name}/{detector}
-     uid = {uid}
+     uid = {thisuid}
      position = {user_ns["BMMuser"].mouse_click}
 
 ''')
@@ -1158,10 +1265,11 @@ def linescan(detector, axis, start, stop, nsteps, dopluck=True, force=False, sta
         countdown(BMMuser.macro_sleep)
         return(yield from null())
     ######################################################################
+    thisuid = None
     user_ns['RE'].msg_hook = None
     yield from finalize_wrapper(main_plan(detector, axis, start, stop, nsteps, dopluck, force, stack, md), cleanup_plan())
     user_ns['RE'].msg_hook = BMM_msg_hook
-
+    return thisuid
 
 
 #############################################################

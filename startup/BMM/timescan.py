@@ -147,8 +147,7 @@ def timescan(detector, readings, dwell, delay, outfile=None, force=False, md={})
                    'fname' : outfile,
                    'uid' : uid, })
     
-    BMM_log_info('timescan: %s\tuid = %s, scan_id = %d' %
-                 (line1, uid, bmm_catalog[uid].metadata['start']['scan_id']))
+    BMM_log_info(f'timescan: {line1}\tuid = {uid}')
 
     yield from mv(_locked_dwell_time, 0.5)
     RE.msg_hook = BMM_msg_hook

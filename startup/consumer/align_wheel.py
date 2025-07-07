@@ -33,6 +33,42 @@ class AlignWheel():
         self.x_center = self.x_amplitude = self.y_center = self.y_amplitude = 0
         self.x_detector = self.y_detector = ''
         
+    def stop(self):
+        self.ongoing = False
+
+        if matplotlib.get_backend().lower() != 'agg':
+            plt.close('all')
+
+            self.fig = plt.figure(tight_layout=True) #, figsize=(9,6))
+            gs = gridspec.GridSpec(2,1)
+
+            x  = self.fig.add_subplot(gs[0, 0])
+            x.scatter(self.x_xaxis, self.x_data, color='blue')
+            x.plot(self.x_xaxis, self.x_best_fit, color='red')
+            x.scatter(self.x_center, abs(self.x_amplitude), s=160, marker='x', color='green')
+            x.set_facecolor((0.95, 0.95, 0.95))
+            x.set_xlabel('xafs_x (mm)')
+            x.set_ylabel(f'{self.x_detector.capitalize()}/I0')
+            x.set_title('Sample wheel alignment')
+
+            y  = self.fig.add_subplot(gs[1, 0])
+            y.scatter(self.y_xaxis, self.y_data, color='blue')
+            y.plot(self.y_xaxis, self.y_best_fit, color='red')
+            y.scatter(self.y_center, abs(self.y_amplitude), s=160, marker='x', color='green')
+            y.set_facecolor((0.95, 0.95, 0.95))
+            y.set_xlabel('xafs_y (mm)')
+            y.set_ylabel(f'{self.y_detector.capitalize()}/IO')
+
+            self.fig.canvas.draw()
+            self.fig.canvas.flush_events()
+        
+        # if matplotlib.get_backend().lower() == 'agg':
+        #     self.fig.savefig(self.filename)
+        #     self.logger.info(f'saved wheel alignment figure (filename)')
+        #     img_to_slack(self.filename, measurement='line')
+
+
+    ## deprecated, see rectanglefit in tools.py
     def plot_rectangle(self, **kwargs):
         motor     = kwargs['motor']
         detector  = kwargs['detector']
@@ -74,35 +110,4 @@ class AlignWheel():
         self.fig.canvas.manager.show()
         self.fig.canvas.flush_events() 
         
-    def stop(self):
-        self.ongoing = False
-
-        plt.close('all')
-
-        self.fig = plt.figure(tight_layout=True) #, figsize=(9,6))
-        gs = gridspec.GridSpec(2,1)
-
-        x  = self.fig.add_subplot(gs[0, 0])
-        x.scatter(self.x_xaxis, self.x_data, color='blue')
-        x.plot(self.x_xaxis, self.x_best_fit, color='red')
-        x.scatter(self.x_center, abs(self.x_amplitude), s=160, marker='x', color='green')
-        x.set_facecolor((0.95, 0.95, 0.95))
-        x.set_xlabel('xafs_x (mm)')
-        x.set_ylabel(f'{self.x_detector.capitalize()}/I0')
-        x.set_title('Sample wheel alignment')
         
-        y  = self.fig.add_subplot(gs[1, 0])
-        y.scatter(self.y_xaxis, self.y_data, color='blue')
-        y.plot(self.y_xaxis, self.y_best_fit, color='red')
-        y.scatter(self.y_center, abs(self.y_amplitude), s=160, marker='x', color='green')
-        y.set_facecolor((0.95, 0.95, 0.95))
-        y.set_xlabel('xafs_y (mm)')
-        y.set_ylabel(f'{self.y_detector.capitalize()}/IO')
-        
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-        
-        # if matplotlib.get_backend().lower() == 'agg':
-        #     self.fig.savefig(self.filename)
-        #     self.logger.info(f'saved wheel alignment figure (filename)')
-        #     img_to_slack(self.filename, measurement='line')

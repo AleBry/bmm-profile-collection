@@ -48,7 +48,7 @@ except ImportError:
 
 
 
-def next_index(folder=None, stub=None, maxtries=15, verbose=False):
+def next_index(folder=None, stub=None, maxtries=6, verbose=False):
     '''Find the next numeric filename extension for a filename stub in the
     specified folder in the proposals directory.
 
@@ -66,7 +66,7 @@ def next_index(folder=None, stub=None, maxtries=15, verbose=False):
       filename stub to check, i.e. filename without extension
 
     maxtries: (int)
-      maximum number of attempts to read before giving up and returning None
+      maximum number of attempts to read before giving up and returning None [6]
 
     verbose: (bool)
       if True, be noisy as we wait for a result
@@ -80,11 +80,12 @@ def next_index(folder=None, stub=None, maxtries=15, verbose=False):
     rkvs = user_ns['rkvs']
     rkvs.set('BMM:next_index', 'None')
     kafka_message({'next_index': True, 'folder': folder, 'stub': stub})
+    time.sleep(1)
     answer = rkvs.get('BMM:next_index').decode('utf8')
     count = 0
     if verbose: print(f"{count = }, {answer = }")
     while answer == 'None':
-        time.sleep(0.1)
+        time.sleep(0.1*2**count)
         answer = rkvs.get('BMM:next_index').decode('utf8')
         count += 1
         if verbose: print(f"{count = }, {answer = }")
@@ -626,15 +627,12 @@ def xafs(inifile=None, **kwargs):
 
         ## sometimes the kafka-redis-while loop in next_index() fails, give it another go
         nicount = 0
-        while p['start'] is None:
-            #report(f":bangbang: p['start']=next_index() returned None, retrying ({nicount})", slack=True)
-            time.sleep(0.5)
+        if p['start'] is None:
             p['start'] = next_index(stub=p['filename'])
-            nicount += 1
-            if nicount > 5:
+            if p['start'] is None:
                 p['start'] = 1
-                report(":bangbang: could not figure out starting index after 5 tries, setting to 1 :shrug:", slack=True)
-                break
+                report(":bangbang: could not figure out starting index, setting to 1 :shrug:", slack=True)
+                
         ## probably not necessary....
         if p['nscans'] is None:
             if 'foil' in p['filename']:

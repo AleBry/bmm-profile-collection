@@ -1,4 +1,5 @@
 from typing import Sequence
+from rich import print as cprint
 
 import bluesky.preprocessors as bpp
 import redis
@@ -203,8 +204,16 @@ except ImportError:
         return False
 
 
+try:
+    from bluesky_queueserver import is_re_worker_active
+except ImportError:
+    # TODO: delete this when 'bluesky_queueserver' is distributed as part of collection environment
+    def is_re_worker_active():
+        return False
+
+
     
-def CMS_driven_measurement(composition=None, distance=None, time=None, scantype='xanes'):
+def CMS_driven_measurement(composition=None, distance=None, time=None, scantype='xanes', element=None):
     '''The purpose of this plan is to convert the experimental "coordinates" 
     from CMS into physical coordinates on a set of samples at BMM.
 
@@ -222,6 +231,12 @@ def CMS_driven_measurement(composition=None, distance=None, time=None, scantype=
 
     scantype (str)
       xanes (during the CMS AE experiment) or exafs (overnight revisiting the points)
+
+    element (str)
+      2- or 3-letter symbol of the element to be measured. Specifying an element 
+      overrides the default list if elements, which is the list of keys in the 
+      "detector_distances"  filed of the config file. Note: not sanity
+      checking is currently done on this value!
 
     configuration
     =============
@@ -267,7 +282,8 @@ def CMS_driven_measurement(composition=None, distance=None, time=None, scantype=
 
     '''
 
-    def main_plan(composition, distance, time, scantype):
+    def main_plan(composition, distance, time, scantype, element):
+        BMMuser.fix()
         if composition is None:
             composition = config['composition']
         report(f"*CMS:* Received instructions: {composition = }, {distance = }, {time = }, {scantype = }", slack=config['slack'])
@@ -280,37 +296,46 @@ def CMS_driven_measurement(composition=None, distance=None, time=None, scantype=
 
         ga.spin = False
         ga.orientation = 'perpendicular'
-        durations = list((config['origins'][x]['duration'] for x in config['origins'].keys()))
+        primary_element = config['primary_element']
+        durations = list((config['origins'][primary_element][x]['duration'] for x in config['origins'][primary_element].keys()))
         this_time = min(durations, key=lambda x:abs(x-time))  # find sample duration closest to requested time
         sample = None
-        for i,k in enumerate(config['origins'].keys()):
-            if this_time == config['origins'][k]['duration']:
+        for i,k in enumerate(config['origins'][primary_element].keys()):
+            if this_time == config['origins'][primary_element][k]['duration']:
                 sample = k
                 position = i+1
                 report(f'*CMS:* Rotating to sample {sample} at position {position}', slack=config['slack'])
                 yield from ga.to(position)
 
-        xpos  = config['origins'][sample]['xafs_x']
-        pitch = config['origins'][sample]['xafs_pitch']
-        roll  = config['origins'][sample]['xafs_roll']
-        ypos  = config['origins'][sample]['xafs_y'] - float(distance) - 0.2
-        report(f'*CMS:* Moving to {distance = }  (X={xpos:.3f}, pitch={pitch:.3f}, roll={roll:.3f}, Y={ypos:.3f})', slack=config['slack'])
-        yield from mv(xafs_x, xpos, xafs_pitch, pitch, xafs_y, ypos, xafs_roll, roll)
-        yield from sleep(1)
 
 
         ## put edges in ascending order by Z number
-        znums = list(Z_number(x) for x in config['detector_distances'].keys())
-        elements = list(element_symbol(x) for x in sorted(znums))
-        ## if mono is currently at the highest energy edge, reverse the element list
-        if BMMuser.element == elements[-1]:
-            elements.reverse()
+        if scantype.lower() == 'xanes':
+            elements = [config['primary_element']]
+        elif element is not None:
+            elements = [element]
+        else:
+            znums = list(Z_number(x) for x in config['detector_distances'].keys())
+            elements = list(element_symbol(x) for x in sorted(znums))
+            ## if mono is currently at the highest energy edge, reverse the element list
+            if BMMuser.element == elements[-1]:
+                elements.reverse()
 
 
         for i, el in enumerate(elements):
+
+            xpos  = config['origins'][el][sample]['xafs_x']
+            pitch = config['origins'][el][sample]['xafs_pitch']
+            roll  = config['origins'][el][sample]['xafs_roll']
+            ypos  = config['origins'][el][sample]['xafs_y'] - float(distance) - 0.2
+            report(f'*CMS:* Moving to {distance = }  (X={xpos:.3f}, pitch={pitch:.3f}, roll={roll:.3f}, Y={ypos:.3f})', slack=config['slack'])
+            yield from mv(xafs_x, xpos, xafs_pitch, pitch, xafs_y, ypos, xafs_roll, roll)
+            yield from sleep(1)
+
+            
             report(f'*CMS:* {scantype} measurement: {el} edge of sample {composition = }, {sample = }, {distance = }, {time = }', slack=config['slack'])
             yield from mv(xafs_det, config['detector_distances'][el])
-            if i > 0:
+            if BMMuser.element != el:
                 if config['dryrun'] is False:
                     yield from change_edge(el, focus=True)
                 else:
@@ -334,11 +359,11 @@ def CMS_driven_measurement(composition=None, distance=None, time=None, scantype=
             if config['dryrun'] is False:
                 if scantype == 'exafs':
                     yield from mvr(xafs_x, -10)
-                    yield from xafs(filename="Tifoil_"+filename, sample=composition, prep=prep, comment=comment, **reference_kwargs)
+                    yield from xafs(filename=f"{el}foil_{filename}", element=el, sample=composition, prep=prep, comment=comment, **reference_kwargs)
                     yield from mvr(xafs_x, 10)
-                yield from xafs(filename=filename, sample=composition, prep=prep, comment=comment, **kwargs)
+                yield from xafs(filename=filename, element=el, sample=composition, prep=prep, comment=comment, **kwargs)
             else:
-                print(f"xafs('/nsls2/data3/bmm/legacy/{el}_{scantype}', {filename=}, sample='{composition} {sample}', {prep =}, {comment=}, {kwargs})")
+                print(f"xafs('/nsls2/data3/bmm/legacy/{el}_{scantype}', element = {el}, {filename=}, sample='{composition} {sample}', {prep =}, {comment=}, {kwargs})")
                 yield from sleep(3)
 
 
@@ -347,7 +372,16 @@ def CMS_driven_measurement(composition=None, distance=None, time=None, scantype=
         yield from resting_state_plan()
         if not is_re_worker_active():
             BMMuser.prompt = True
-        
+        BMMuser.fix()
+
+
+    if is_re_worker_active() is False:
+        cprint('\n[red1]CMS_driven_measurement() should not be called from bsui.[/red1]')
+        cprint('This plan is to be run [yellow2]only[/yellow2] by the queueserver\n')
+        cprint('You probably mean to use [deep_pink4]populate_overnight_CMS_driven_experiments()[/deep_pink4]')
+        cprint('[grey42]Not RE(populate_overnight_CMS_driven_experiments()), i.e. not through run engine![/grey42]\n')
+        yield from null()
+        return
         
     BMMuser = user_ns['BMMuser']
     ga = user_ns['ga']
@@ -366,24 +400,41 @@ def CMS_driven_measurement(composition=None, distance=None, time=None, scantype=
             scantype = 'xanes'
 
     
-    yield from finalize_wrapper(main_plan(composition, distance, time, scantype), cleanup_plan())
+    yield from finalize_wrapper(main_plan(composition, distance, time, scantype, element), cleanup_plan())
 
 
-from bluesky_queueserver_api.http import REManagerAPI
+#from bluesky_queueserver_api.http import REManagerAPI
 from bluesky_queueserver_api import BPlan
 
+from bluesky_queueserver_api.zmq import REManagerAPI as ZMQ_RE_API
+from bluesky_queueserver_api.http import REManagerAPI as HTTP_RE_API
+
 def populate_overnight_CMS_driven_experiments():
-    '''Parse the hokey file written by CMS_driven_measurement containing a
-    list of positions and times.  For each line, generate the
+    '''Parse the hokey file written by CMS_driven_measurement() containing
+    a list of positions and times.  For each line, generate the
     corresponding BPLan and submit it to the queue.
+
+    The text file contains the arguments passed to the queueserver
+    during the synchronous multi-modal experiment for emasuring quick
+    XANES scans at specific points.  The purpose of this function is
+    to populate the queue with the same list of measurements, but to
+    measure the EXAFS at each point.
+
+    This is intended to be run from the bluesky command line at BMM.
 
     '''
     with open('/nsls2/data3/bmm/legacy/overnight.txt', 'r') as f:
         instructions = f.readlines()
 
     #beamline_tla  = "bmm"
-    qs = REManagerAPI(http_server_uri=profile_configuration.get('services', 'qs'))
-    qs.set_authorization_key(api_key="dbb8b2a3060cc02cfjg9029ncls2983sx7jd7CMSBeamtime20250303")
+    #qs = REManagerAPI(http_server_uri=profile_configuration.get('services', 'qs'))
+
+    ## only from BMM subnet, no auth necessary
+    qs = ZMQ_RE_API(zmq_control_addr="tcp://xf06bm-srv1.nsls2.bnl.local:60615", zmq_info_addr="tcp://xf06bm-srv1.nsls2.bnl.local:60625")
+    #apikey_file = profile_configuration.get('services', 'qskeys')
+    #with open(os.path.join(apikey_file, 'qserver_http_api_keys', 'BMM_API_KEY_20241101'), "r") as f:
+    #    apikey = f.read()
+    #qs.set_authorization_key(api_key=apikey)
     for inst in instructions:
         dt, composition, position, time = inst.split()
         position = float(position)

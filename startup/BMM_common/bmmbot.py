@@ -139,8 +139,11 @@ class BMMbot():
         if self.last_message is not None:
             timestamp = self.last_message.data['ts']
             channel = self.last_message.data['channel']
-            self.client.pins_add(channel=channel, timestamp=timestamp)
-            
+            try:
+                self.client.pins_add(channel=channel, timestamp=timestamp)
+            except:
+                pass
+                
     def random_flag(self):
         '''Return a random flag emoji, which is sometimes useful for debugging.'''
         countries = ('ad', 'ae', 'af', 'ag', 'ai', 'al', 'am', 'ao', 'aq', 'ar', 'as', 'at', 'au', 'aw',

@@ -836,7 +836,7 @@ class BMM_User(Borg):
             if file_exists(proposal_base(), '.introduction_made', number=False) is False:
                 text = f'''Welcome to the Slack channel for your beamtime at BMM!
  
-:speech_balloon: Use this channel for chat .
+:speech_balloon: Use this channel for chat.
 :atom_symbol: Beamline messages will be posted on #pass-{gup}-bmm.
 
 BMM data access: https://nsls2.github.io/bmm-beamline-manual/data.html

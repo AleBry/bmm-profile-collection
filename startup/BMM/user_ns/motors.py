@@ -102,7 +102,7 @@ if 'XAFSEpicsMotor' in str(type(dm3_bct)):
     #dm3_bct.acceleration.put(0.25)
     #dm3_bct.hvel_sp.put(0.05)
     dm3_bct.llm.put(-60)
-    dm3_bct.hlm.put(60)
+    dm3_bct.hlm.put(65)
 
 if 'XAFSEpicsMotor' in str(type(dm3_bpm)):
     dm3_bpm.hvel_sp.put(0.05)
@@ -175,7 +175,7 @@ xafs_rots  = define_EndStationEpicsMotor('XF:06BMA-BI{XAFS-Ax:RotS}Mtr',  name='
 #xafs_det   = xafs_lins  = define_EndStationEpicsMotor('XF:06BMA-BI{XAFS-Ax:LinS}Mtr',  name='xafs_det')
 xafs_detx  = xafs_det   = EndStationEpicsMotor('XF:06BMA-BI{XAFS-Ax:Tbl_XD}Mtr',  name='xafs_detx')
 xafs_linxs = xafs_refy  = define_EndStationEpicsMotor('XF:06BMA-BI{XAFS-Ax:LinXS}Mtr', name='xafs_refy')
-xafs_refx  = define_EndStationEpicsMotor('XF:06BMA-BI{XAFS-Ax:RefX}Mtr', name='xafs_refx')
+xafs_refx  = define_EndStationEpicsMotor('XF:06BMA-BI{XAFS-Ax:RefX}Mtr', name='xafs_refx') 
 xafs_x     = xafs_linx  = define_EndStationEpicsMotor('XF:06BMA-BI{XAFS-Ax:LinX}Mtr',  name='xafs_x')
 xafs_y     = xafs_liny  = define_EndStationEpicsMotor('XF:06BMA-BI{XAFS-Ax:LinY}Mtr',  name='xafs_y')
 xafs_roll  = define_EndStationEpicsMotor('XF:06BMA-BI{XAFS-Ax:Pitch}Mtr', name='xafs_roll') # note: the way this stage gets mounted, the
@@ -199,7 +199,7 @@ xafs_y.default_hlm = 200
 print(f'{TAB}XAFS stages motor group, encoded')
 xafs_dety  = define_EncodedEndStationEpicsMotor('XF:06BM-ES{MC:09-Ax:1}Mtr',  name='xafs_dety')
 xafs_detz  = define_EncodedEndStationEpicsMotor('XF:06BM-ES{MC:09-Ax:2}Mtr',  name='xafs_detz')
-xafs_spare = define_EncodedEndStationEpicsMotor('XF:06BM-ES{MC:09-Ax:3}Mtr',  name='xafs_spare')
+xafs_spare  = define_EncodedEndStationEpicsMotor('XF:06BM-ES{MC:09-Ax:3}Mtr',  name='xafs_spare')
 xafs_bsy   = define_EncodedEndStationEpicsMotor('XF:06BM-ES{MC:09-Ax:4}Mtr',  name='xafs_bsy')
 xafs_bsx   = define_EncodedEndStationEpicsMotor('XF:06BM-ES{MC:09-Ax:5}Mtr',  name='xafs_bsx')
 

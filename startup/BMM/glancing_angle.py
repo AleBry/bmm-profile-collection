@@ -6,6 +6,7 @@ except ImportError:
         return False
 
 from bluesky.plan_stubs import sleep, mv, mvr, null
+from bluesky.preprocessors import finalize_wrapper
 from ophyd import Component as Cpt, EpicsSignal, EpicsSignalRO, Signal, Device
 
 import os, re, shutil, glob, psutil
@@ -14,23 +15,19 @@ import configparser
 import numpy
 from pathlib import Path
 
-import matplotlib
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-from lmfit.models import StepModel
-from scipy.ndimage import center_of_mass
-from PIL import Image
 
-from BMM.functions      import error_msg, warning_msg, go_msg, url_msg, bold_msg, verbosebold_msg, list_msg, disconnected_msg, info_msg, whisper
-from BMM.functions      import countdown, isfloat, present_options, now, PROMPT, PROMPTNC, animated_prompt, proposal_base
-from BMM.kafka          import kafka_message
-from BMM.logging        import report
-from BMM.linescans      import linescan
-from BMM.macrobuilder   import BMMMacroBuilder
-from BMM.modes          import get_mode
-from BMM.periodictable  import PERIODIC_TABLE, edge_energy
-from BMM.suspenders     import BMM_suspenders, BMM_clear_to_start, BMM_clear_suspenders
-from BMM.xafs_functions import conventional_grid
+from BMM.functions         import error_msg, warning_msg, go_msg, url_msg, bold_msg, verbosebold_msg, list_msg, disconnected_msg, info_msg, whisper
+from BMM.functions         import countdown, isfloat, present_options, now, PROMPT, PROMPTNC, animated_prompt, proposal_base
+from BMM.kafka             import kafka_message
+from BMM.logging           import BMM_log_info, BMM_msg_hook, report
+from BMM.linescans         import linescan, prepare_alignment_scan, fetch_peak_position_via_redis
+from BMM.macrobuilder      import BMMMacroBuilder
+from BMM.modes             import get_mode
+from BMM.periodictable     import PERIODIC_TABLE, edge_energy
+from BMM.resting_state     import resting_state_plan
+from BMM.suspenders        import BMM_suspenders, BMM_clear_to_start, BMM_clear_suspenders
+from BMM.xafs_functions    import conventional_grid
+from BMM.user_ns.dwelltime import _locked_dwell_time
 
 from BMM import user_ns as user_ns_module
 user_ns = vars(user_ns_module)
@@ -195,38 +192,50 @@ class GlancingAngle(Device):
         '''Find the peak of xafs_pitch scan against It. Plot the
         result. Move to the peak.'''
         kafka_message({'close': 'last'})
-        xafs_pitch = user_ns['xafs_pitch']
-        uid = yield from linescan(xafs_pitch, 'it', -2.5, 2.5, 51, dopluck=False, force=force)
+        motor = user_ns['xafs_pitch']
+        yield from prepare_alignment_scan()
+        uid = yield from linescan(motor, 'it', -2.5, 2.5, 51, dopluck=False, force=force)
         kafka_message({'close': 'last'})
 
-        ATTEMPTS = 4
-        error = None
-        for attempt in range(ATTEMPTS):
-            try:
-                table  = user_ns['db'][-1].table()
-            except Exception as exc:
-                print(f"glancing angle alignment: Failure {attempt} reading back pitch scan data:", repr(exc))
-                error = exc
-            else:
-                break
-            time.sleep(2)
-        else:
-            # out of attemtps
-            raise error
+        
+        kafka_message({'peakfit'    : True,
+                       'uid'        : 'last',
+                       'motor_name' : motor.name,
+                       'signal'     : 'It',
+                       'choice'     : 'peak',
+                       'spinner'    : self.current()})
+        top = fetch_peak_position_via_redis()
+        yield from mv(motor, top)
+
+        
+        # ATTEMPTS = 4
+        # error = None
+        # for attempt in range(ATTEMPTS):
+        #     try:
+        #         table  = user_ns['db'][-1].table()
+        #     except Exception as exc:
+        #         print(f"glancing angle alignment: Failure {attempt} reading back pitch scan data:", repr(exc))
+        #         error = exc
+        #     else:
+        #         break
+        #     time.sleep(2)
+        # else:
+        #     # out of attemtps
+        #     raise error
             
-        pitch  = table['xafs_pitch']
-        signal = table['It']/table['I0']
-        target = signal.idxmax()
-        yield from mv(xafs_pitch, pitch[target])
-        kafka_message({'glancing_angle' : 'pitch',
-                       'motor'          : 'xafs_pitch',
-                       'center'         : pitch[target],
-                       'amplitude'      : signal.max(),
-                       'spinner'        : self.current(),
-                       'xaxis'          : list(pitch),
-                       'data'           : list(signal),
-                       'uid'            : uid,})
-        #self.pitch_plot(pitch, signal)
+        # pitch  = table['xafs_pitch']
+        # signal = table['It']/table['I0']
+        # target = signal.idxmax()
+        # yield from mv(xafs_pitch, pitch[target])
+        # kafka_message({'glancing_angle' : 'pitch',
+        #                'motor'          : 'xafs_pitch',
+        #                'center'         : pitch[target],
+        #                'amplitude'      : signal.max(),
+        #                'spinner'        : self.current(),
+        #                'xaxis'          : list(pitch),
+        #                'data'           : list(signal),
+        #                'uid'            : uid,})
+        # #self.pitch_plot(pitch, signal)
     
 
     def align_linear(self, force=False, drop=None):
@@ -237,36 +246,46 @@ class GlancingAngle(Device):
             motor = user_ns['xafs_liny']
         else:
             motor = user_ns['xafs_linx']
+        yield from prepare_alignment_scan()
         uid = yield from linescan(motor, 'it', -2.3, 2.3, 51, dopluck=False)
         kafka_message({'close': 'last'})
-        table  = user_ns['db'][-1].table()
-        yy     = table[motor.name]
-        signal = table['It']/table['I0']
-        if drop is not None:
-            yy = yy[:-drop]
-            signal = signal[:-drop]
-        if float(signal[2]) > list(signal)[-2] :
-            ss     = -(signal - signal[2])
-            self.inverted = 'inverted '
-        else:
-            ss     = signal - signal[2]
-            self.inverted    = ''
-        mod    = StepModel(form='erf')
-        pars   = mod.guess(ss, x=numpy.array(yy))
-        out    = mod.fit(ss, pars, x=numpy.array(yy))
-        whisper(out.fit_report(min_correl=0))
-        target = out.params['center'].value
+        kafka_message({'stepfit'    : True,
+                       'uid'        : 'last',
+                       'motor_name' : motor.name,
+                       'signal'     : 'It',
+                       'spinner'    : self.current() })
+        target = fetch_peak_position_via_redis()
         yield from mv(motor, target)
-        kafka_message({'glancing_angle' : 'linear',
-                       'motor'          : motor.name,
-                       'center'         : target,
-                       'amplitude'      : out.params['amplitude'].value,
-                       'inverted'       : self.inverted,
-                       'spinner'        : self.current(),
-                       'xaxis'          : list(yy),
-                       'data'           : list(ss),
-                       'best_fit'       : list(out.best_fit),
-                       'uid'            : uid,})
+        
+        
+        # table  = user_ns['db'][-1].table()
+        # yy     = table[motor.name]
+        # signal = table['It']/table['I0']
+        # if drop is not None:
+        #     yy = yy[:-drop]
+        #     signal = signal[:-drop]
+        # if float(signal[2]) > list(signal)[-2] :
+        #     ss     = -(signal - signal[2])
+        #     self.inverted = 'inverted '
+        # else:
+        #     ss     = signal - signal[2]
+        #     self.inverted    = ''
+        # mod    = StepModel(form='erf')
+        # pars   = mod.guess(ss, x=numpy.array(yy))
+        # out    = mod.fit(ss, pars, x=numpy.array(yy))
+        # whisper(out.fit_report(min_correl=0))
+        # target = out.params['center'].value
+        # yield from mv(motor, target)
+        # kafka_message({'glancing_angle' : 'linear',
+        #                'motor'          : motor.name,
+        #                'center'         : target,
+        #                'amplitude'      : out.params['amplitude'].value,
+        #                'inverted'       : self.inverted,
+        #                'spinner'        : self.current(),
+        #                'xaxis'          : list(yy),
+        #                'data'           : list(ss),
+        #                'best_fit'       : list(out.best_fit),
+        #                'uid'            : uid,})
 
         #self.y_plot(yy, out)
 
@@ -274,48 +293,59 @@ class GlancingAngle(Device):
     def align_fluo(self, force=False):
         kafka_message({'close': 'last'})
         BMMuser = user_ns['BMMuser']
+        yield from prepare_alignment_scan()
         if self.orientation == 'parallel':
             motor = user_ns['xafs_liny']
         else:
             motor = user_ns['xafs_linx']
         uid = yield from linescan(motor, 'xs', -1.8, 1.8, 51, dopluck=False, force=force, stack=False)
-        self.f_uid = user_ns['db'].v2[-1].metadata['start']['uid'] 
-        tf = user_ns['db'][-1].table()
-        yy = tf[motor.name]
-        yy = yy[2:]             # spurious first point in fluo scan due to Xspress3 issue 24 July 2024
-        rkvs = user_ns['rkvs']
-        detector = rkvs.get('BMM:xspress3').decode('utf-8')
-        if detector == '1':
-            signal = tf[BMMuser.xs1] / tf['I0']
-        elif detector == '4':
-            signal = (tf[BMMuser.xs1] +
-                      tf[BMMuser.xs2] +
-                      tf[BMMuser.xs3] +
-                      tf[BMMuser.xs4]) / tf['I0']
-        elif detector == '7':
-            signal = (tf[BMMuser.xs1] +
-                      tf[BMMuser.xs2] +
-                      tf[BMMuser.xs3] +
-                      tf[BMMuser.xs4] +
-                      tf[BMMuser.xs5] +
-                      tf[BMMuser.xs6] +
-                      tf[BMMuser.xs7]) / tf['I0']
-        signal = signal[2:]
-        #if BMMuser.element in ('Cr', 'Zr'):
-        centroid = yy[signal.idxmax()]
-        #else:
-        #    com = int(center_of_mass(signal)[0])+1
-        #    centroid = yy[com]
-        yield from mv(motor, centroid)
-        kafka_message({'glancing_angle' : 'fluo',
-                       'motor'          : motor.name,
-                       'center'         : centroid,
-                       'amplitude'      : signal.max(),
-                       'inverted'       : self.inverted,
-                       'spinner'        : self.current(),
-                       'xaxis'          : list(yy),
-                       'data'           : list(signal),
-                       'uid'            : uid,})
+        kafka_message({'close': 'last'})
+        kafka_message({'peakfit'    : True,
+                       'uid'        : 'last',
+                       'motor_name' : motor.name,
+                       'signal'     : 'If',
+                       'choice'     : 'peak',
+                       'spinner'    : self.current()})
+        target = fetch_peak_position_via_redis()
+        yield from mv(motor, target)
+        self.f_uid = uid
+
+        # tf = user_ns['db'][-1].table()
+        # yy = tf[motor.name]
+        # yy = yy[2:]             # spurious first point in fluo scan due to Xspress3 issue 24 July 2024
+        # rkvs = user_ns['rkvs']
+        # detector = rkvs.get('BMM:xspress3').decode('utf-8')
+        # if detector == '1':
+        #     signal = tf[BMMuser.xs1] / tf['I0']
+        # elif detector == '4':
+        #     signal = (tf[BMMuser.xs1] +
+        #               tf[BMMuser.xs2] +
+        #               tf[BMMuser.xs3] +
+        #               tf[BMMuser.xs4]) / tf['I0']
+        # elif detector == '7':
+        #     signal = (tf[BMMuser.xs1] +
+        #               tf[BMMuser.xs2] +
+        #               tf[BMMuser.xs3] +
+        #               tf[BMMuser.xs4] +
+        #               tf[BMMuser.xs5] +
+        #               tf[BMMuser.xs6] +
+        #               tf[BMMuser.xs7]) / tf['I0']
+        # signal = signal[2:]
+        # #if BMMuser.element in ('Cr', 'Zr'):
+        # centroid = yy[signal.idxmax()]
+        # #else:
+        # #    com = int(center_of_mass(signal)[0])+1
+        # #    centroid = yy[com]
+        # yield from mv(motor, centroid)
+        # kafka_message({'glancing_angle' : 'fluo',
+        #                'motor'          : motor.name,
+        #                'center'         : centroid,
+        #                'amplitude'      : signal.max(),
+        #                'inverted'       : self.inverted,
+        #                'spinner'        : self.current(),
+        #                'xaxis'          : list(yy),
+        #                'data'           : list(signal),
+        #                'uid'            : uid,})
 
         
     def auto_align(self, pitch=2, drop=None):
@@ -353,51 +383,69 @@ class GlancingAngle(Device):
 
         '''
         BMMuser = user_ns['BMMuser']
-        if BMMuser.macro_dryrun:
-            report(f'Auto-aligning glancing angle stage, spinner {self.current()}', level='bold', slack=False)
-            info_msg(f'\nBMMuser.macro_dryrun is True.  Sleeping for %.1f seconds at spinner %d.\n' %
-                           (BMMuser.macro_sleep, self.current()))
-            countdown(BMMuser.macro_sleep)
-            return(yield from null())
 
-        report(f'Auto-aligning glancing angle stage, spinner {self.current()}', level='bold', slack=True)
+        def main_plan(pitch, drop):
+            if BMMuser.macro_dryrun:
+                report(f'Auto-aligning glancing angle stage, spinner {self.current()}', level='bold', slack=False)
+                info_msg(f'\nBMMuser.macro_dryrun is True.  Sleeping for %.1f seconds at spinner %d.\n' %
+                               (BMMuser.macro_sleep, self.current()))
+                countdown(BMMuser.macro_sleep)
+                return(yield from null())
+
+            report(f'Auto-aligning glancing angle stage, spinner {self.current()}', level='bold', slack=True)
+
+            BMM_suspenders()
+            self.alignment_filename = os.path.join(proposal_base(), 'snapshots', f'spinner{self.current()}-alignment-{now()}.png')
+            kafka_message({'glancing_angle' : 'start',
+                           'filename' : self.alignment_filename})
+
+            ## first pass in transmission
+            yield from self.align_linear(drop=drop)
+            yield from sleep(1)
+            yield from self.align_pitch()
+            yield from sleep(1)
+
+            ## for realsies X or Y in transmission
+            yield from self.align_linear(drop=drop)
+            #self.y_uid = user_ns['db'].v2[-1].metadata['start']['uid'] 
+            yield from sleep(1)
+            kafka_message({'close': 'all'})
+
+            ## for realsies Y in pitch
+            yield from self.align_pitch()
+            #self.pitch_uid = user_ns['db'].v2[-1].metadata['start']['uid'] 
+            yield from sleep(1)
+            kafka_message({'close': 'all'})
+
+            ## record the flat position
+            if self.orientation == 'parallel':
+                motor = user_ns['xafs_y']
+            else:
+                motor = user_ns['xafs_x']
+            self.flat = [motor.position, user_ns['xafs_pitch'].position]
+
+            ## move to measurement angle and align
+            yield from mvr(user_ns['xafs_pitch'], pitch)
+            yield from self.align_fluo()
+            self.f_uid = user_ns['db'].v2[-1].metadata['start']['uid'] 
+
+
+        def cleanup_plan():
+            yield from mv(_locked_dwell_time, 0.5)
+            yield from resting_state_plan()
+            kafka_message({'close': 'all'})
+            kafka_message({'glancing_angle' : 'stop'})
+            self.y_uid     = user_ns['rkvs'].get('BMM:ga:xy_uid').decode('utf-8')
+            self.pitch_uid = user_ns['rkvs'].get('BMM:ga:pitch_uid').decode('utf-8')
+            self.f_uid     = user_ns['rkvs'].get('BMM:ga:fluo_uid').decode('utf-8')
             
-        BMM_suspenders()
-        self.alignment_filename = os.path.join(proposal_base(), 'snapshots', f'spinner{self.current()}-alignment-{now()}.png')
-        kafka_message({'glancing_angle' : 'start',
-                       'filename' : self.alignment_filename})
-
-        ## first pass in transmission
-        yield from self.align_linear(drop=drop)
-        yield from sleep(1)
-        yield from self.align_pitch()
-        yield from sleep(1)
-
-        ## for realsies X or Y in transmission
-        yield from self.align_linear(drop=drop)
-        self.y_uid = user_ns['db'].v2[-1].metadata['start']['uid'] 
-        yield from sleep(1)
-
-        ## for realsies Y in pitch
-        yield from self.align_pitch()
-        self.pitch_uid = user_ns['db'].v2[-1].metadata['start']['uid'] 
-        yield from sleep(1)
-
-        ## record the flat position
-        if self.orientation == 'parallel':
-            motor = user_ns['xafs_y']
-        else:
-            motor = user_ns['xafs_x']
-        self.flat = [motor.position, user_ns['xafs_pitch'].position]
-
-        ## move to measurement angle and align
-        yield from mvr(user_ns['xafs_pitch'], pitch)
-        yield from self.align_fluo()
-        kafka_message({'close': 'last'})
-        kafka_message({'glancing_angle' : 'stop'})
-         
+        user_ns['RE'].msg_hook = None
+        yield from finalize_wrapper(main_plan(pitch=2, drop=None), cleanup_plan())
+        user_ns['RE'].msg_hook = BMM_msg_hook
         BMM_clear_suspenders()
  
+
+
         
     def flatten(self):
         '''Return the stage to its nominally flat position.'''

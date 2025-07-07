@@ -426,8 +426,9 @@ if lmb  is not None: lmb.folder  = BMMuser.folder     # Linkam stage
 if lsmb is not None: lsmb.folder = BMMuser.folder     # LakeShore 331 temperature controller
 if gmb  is not None: gmb.folder  = BMMuser.folder     # generic motor grid
 
-#run_report('\t'+'CMS experiment')
-#from BMM.agent_plans import CMS_driven_measurement
+if profile_configuration.getboolean('experiments', 'cms'):
+    run_report('\t'+'CMS experiment')
+    from BMM.agent_plans import CMS_driven_measurement, populate_overnight_CMS_driven_experiments
 
 
 from BMM.logging import BMM_msg_hook

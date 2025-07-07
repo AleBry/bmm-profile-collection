@@ -58,6 +58,9 @@ xrf.logger = logger
 asc = AreaScan()
 asc.logger = logger
 
+from tools import peakfit, rectanglefit, stepfit
+
+
 # these two lines allow a stale plot to remain interactive and prevent
 # the current plot from stealing focus.  thanks to Tom:
 # https://nsls2.slack.com/archives/C02D9V72QH1/p1674589090772499
@@ -83,7 +86,8 @@ def plot_from_kafka_messages(beamline_acronym):
 
         if name == 'bmm':
             if any(x in message for x in ('xafs_sequence', 'glancing_angle', 'align_wheel', 'wafer', 'mono_calibration',
-                                          'xrfat', 'linescan', 'xafsscan', 'timescan', 'xrf', 'areascan', 'close', 'logger', 'refresh_slack')) :
+                                          'xrfat', 'linescan', 'xafsscan', 'timescan', 'xrf', 'areascan', 'close', 'logger', 'refresh_slack',
+                                          'peakfit', 'stepfit', 'rectanglefit')) :
                 if be_verbose is True:
                     print(f'\n[{datetime.datetime.now().isoformat(timespec="seconds")}]\n{pprint.pformat(message, compact=True)}')
                 else:
@@ -175,6 +179,45 @@ def plot_from_kafka_messages(beamline_acronym):
                     xrf.plot(catalog=bmm_catalog, **message)
                 elif message['xrf'] == 'write':
                     xrf.to_xdi(catalog=bmm_catalog, uid=message['uid'], filename=message['filename'])
+
+            elif 'peakfit' in message:
+                if 'spinner' in message:
+                    spinner = message['spinner']
+                else:
+                    spinner = None
+                peakfit(catalog = bmm_catalog,
+                        uid     = message['uid'],
+                        motor   = message['motor_name'],
+                        signal  = message['signal'],
+                        choice  = message['choice'],
+                        spinner = spinner,
+                        ga      = ga)
+                    
+            elif 'rectanglefit' in message:
+                if 'drop' in message:
+                    drop = message['drop']
+                else:
+                    drop = None
+                rectanglefit(catalog = bmm_catalog,
+                             uid     = message['uid'],
+                             motor   = message['motor_name'],
+                             signal  = message['signal'],
+                             drop    = drop,
+                             aw      = aw)
+
+            elif 'stepfit' in message:
+                if 'spinner' in message:
+                    spinner = message['spinner']
+                else:
+                    spinner = None
+                stepfit(catalog = bmm_catalog,
+                        uid     = message['uid'],
+                        motor   = message['motor_name'],
+                        signal  = message['signal'],
+                        spinner = spinner,
+                        ga      = ga)
+
+
                     
             elif 'verbose' in message:
                 be_verbose = message['verbose']
