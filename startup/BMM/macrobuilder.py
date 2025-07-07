@@ -103,7 +103,7 @@ class BMMMacroBuilder():
                                  'temperature', 'settle', 'power',  # Linkam, Lakeshore
                                  'spin', 'angle', 'method',  # glancing angle stage
                                  'spinner', 'roi2', 'roi3', 'flat', 'relativep', # resonent reflectivity
-                                 'motor1', 'position1', 'motor2', 'position2', 'motor3', 'position3',  # grid automation
+                                 'motor1', 'position1', 'motor2', 'position2', 'motor3', 'position3', 'motor4', 'position4', 'motor5', 'position5',  # grid automation
                                  'optimize'  # grid, but not in use
         )
         self.flags            = ('snapshots', 'htmlpage', 'usbstick', 'bothways', 'channelcut', 'ththth')
@@ -115,6 +115,14 @@ class BMMMacroBuilder():
         self.orientation      = 'parallel'
         self.retract          = 10
         self.edgechange       = 'Normal' # 'Quick'
+
+        ## motors for grid automation
+        self.motor1           = None
+        self.motor2           = None
+        self.motor3           = None
+        self.motor4           = None
+        self.motor5           = None
+
         
     def spreadsheet(self, spreadsheet=None, sheet=None, double=False):
         '''Convert an experiment description spreadsheet to a BlueSky plan.
@@ -205,6 +213,16 @@ class BMMMacroBuilder():
         self.instrument = str(self.ws['B1'].value).lower()
         self.version = str(self.ws['B2'].value).lower()
 
+        if self.instrument == 'grid':
+            self.motor1 = str(self.ws['R5'].value).lower()
+            self.motor2 = str(self.ws['S5'].value).lower()
+            self.motor3 = str(self.ws['T5'].value).lower()
+            if self.motor3 == 'none': self.motor3, self.position3 = None,None
+            self.motor4 = str(self.ws['U5'].value).lower()
+            if self.motor4 == 'none': self.motor4, self.position4 = None,None
+            self.motor5 = str(self.ws['V5'].value).lower()
+            if self.motor5 == 'none': self.motor5, self.position5 = None,None
+        
         isok, explanation, reference = self.read_spreadsheet()
         if isok is False:
             print('\n' + error_msg(explanation))

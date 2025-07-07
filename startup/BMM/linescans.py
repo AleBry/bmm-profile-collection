@@ -324,19 +324,6 @@ def slit_height(start=-1.5, stop=1.5, nsteps=31, move=False, force=False, slp=1.
                     raise ValueError('Failed to find slit_height peak position.')
                 yield from mv(motor, top)
                 
-                # t  = user_ns['db'][-1].table()
-                # signal = t['I0']
-                # #if get_mode() in ('A', 'B', 'C'):
-                # #    position = com(signal)
-                # #else:
-                # position = peak(signal)
-                # top = t[motor.name][position]
-                
-                #yield from sleep(slp)
-                #yield from mv(motor.kill_cmd, 1)
-                #yield from sleep(slp)
-                yield from mv(motor, top)
-
             else:
                 #action = input('\n' + bold_msg('Pluck motor position from the plot? ' + PROMPT))
                 print()
@@ -569,23 +556,6 @@ def rocking_curve(start=-0.10, stop=0.10, nsteps=101, detector='I0', choice='pea
                 error_msg('Failed to find rocking curve peak position.')
                 raise ValueError('Failed to find rocking curve peak position.')
                 
-            # t  = user_ns['db'][-1].table()
-            # signal = t[sgnl]
-            # if choice.lower() == 'com':
-            #     position = com(signal)
-            #     top      = t[motor.name][position]
-            # elif choice.lower() == 'fit':
-            #     pitch    = t['dcm_pitch']
-            #     mod      = SkewedGaussianModel()
-            #     pars     = mod.guess(signal, x=pitch)
-            #     out      = mod.fit(signal, pars, x=pitch)
-            #     whisper(out.fit_report(min_correl=0))
-            #     out.plot()
-            #     top      = out.params['center'].value
-            # else:
-            #     position = peak(signal)
-            #     top      = t[motor.name][position]
-
             yield from mv(motor.kill_cmd, 1)
             yield from sleep(1.0)
             user_ns['RE'].msg_hook = BMM_msg_hook
@@ -843,41 +813,6 @@ def rectangle_scan(motor=None, start=-20, stop=20, nsteps=41, detector='It',
                     if action[0].lower() == 'n' or action[0].lower() == 'q':
                         return(yield from null())
                 yield from pluck(suggested_motor=motor)
-                
-            
-            # t  = user_ns['db'][-1].table()
-            # if detector.lower() == 'if':
-            #     signal   = numpy.array((t[BMMuser.xs1]+t[BMMuser.xs2]+t[BMMuser.xs3]+t[BMMuser.xs4])/t['I0'])
-            # elif detector.lower() == 'it':
-            #     signal   = numpy.array(t['It']/t['I0'])
-            # elif detector.lower() == 'ir':
-            #     signal   = numpy.array(t['Ir']/t['It'])
-
-            # signal = signal - signal[0]
-            # if negate is True:
-            #     signal = -1 * signal
-            # pos      = numpy.array(t[motor.name])
-            # mod      = RectangleModel(form='erf')
-            # pars     = mod.guess(signal, x=pos)
-            # out      = mod.fit(signal, pars, x=pos)
-            # whisper(out.fit_report(min_correl=0))
-            # if chore == 'find_slot':
-            #     kafka_message({'close': 'last'})
-            #     kafka_message({'align_wheel' : 'find_slot',
-            #                    'motor'       : motor.name,
-            #                    'detector'    : detector.lower(),
-            #                    'xaxis'       : list(pos),
-            #                    'data'        : list(signal),
-            #                    'best_fit'    : list(out.best_fit),
-            #                    'center'      : out.params['midpoint'].value,
-            #                    'amplitude'   : out.params['amplitude'].value,
-            #                    'uid'         : uid})
-
-            # if move is True:
-            #     yield from mv(motor, out.params['midpoint'].value)
-            #bold_msg(f'Found center at {motor.name} = {motor.position}')
-            #for k in ('center1', 'center2', 'sigma1', 'sigma2', 'amplitude', 'midpoint'):
-            #    rkvs.set(f'BMM:lmfit:{k}', out.params[k].value)
 
         yield from doscan(filename)
         
@@ -948,45 +883,6 @@ def peak_scan(motor=None, start=-20, stop=20, nsteps=41, detector='It', find='ma
                            'choice'     : 'peak'})
             target = fetch_peak_position_via_redis()
             yield from mv(motor, target)
-            
-            
-            # t  = user_ns['db'][-1].table()
-            # if detector.lower() == 'if':
-            #     signal   = numpy.array((t[BMMuser.xs1]+t[BMMuser.xs2]+t[BMMuser.xs3]+t[BMMuser.xs4])/t['I0'])
-            # elif detector.lower() == 'it':
-            #     signal   = numpy.array(t['It']/t['I0'])
-            # elif detector.lower() == 'ir':
-            #     signal   = numpy.array(t['Ir']/t['It'])
-
-            # signal = signal - signal[0]
-            # if find == 'min':
-            #     signal = -1 * signal
-            # pos      = numpy.array(t[motor.name])
-
-            # if choice.lower() == 'com':
-            #     position = com(signal)
-            #     top      = t[motor.name][position]
-            # elif choice.lower() == 'fit':
-            #     pitch    = t[motor_name]
-            #     mod      = SkewedGaussianModel()
-            #     pars     = mod.guess(signal, x=pitch)
-            #     out      = mod.fit(signal, pars, x=pitch)
-            #     whisper(out.fit_report(min_correl=0))
-            #     out.plot()
-            #     top      = out.params['center'].value
-            # else:
-            #     position = peak(signal)
-            #     top      = t[motor.name][position]
-            
-            # thisagg = matplotlib.get_backend()
-            # matplotlib.use('Agg') # produce a plot without screen display
-            # out.plot()
-            # if filename is None:
-            #     filename = os.path.join(user_ns['BMMuser'].folder, 'snapshots', 'toss.png')
-            # plt.savefig(filename)
-            # matplotlib.use(thisagg) # return to screen display
-            
-            # yield from mv(motor, top)
             bold_msg(f'Found peak at {motor.name} = {motor.position}')
             for k in ('center1', 'center2', 'sigma1', 'sigma2', 'amplitude', 'midpoint'):
                 rkvs.set(f'BMM:lmfit:{k}', out.params[k].value)

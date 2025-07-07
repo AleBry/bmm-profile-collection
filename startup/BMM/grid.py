@@ -3,6 +3,8 @@ from BMM.macrobuilder import BMMMacroBuilder
 from BMM import user_ns as user_ns_module
 user_ns = vars(user_ns_module)
 
+from rich import print as cprint
+
 class GridMacroBuilder(BMMMacroBuilder):
     '''A class for parsing specially constructed spreadsheets and
     generating macros for measuring XAS using the Linkam stage.
@@ -18,9 +20,13 @@ class GridMacroBuilder(BMMMacroBuilder):
     motor1     = None
     motor2     = None
     motor3     = None
+    motor4     = None
+    motor5     = None
     position1  = None
     position2  = None
     position3  = None
+    position4  = None
+    position5  = None
 
     
     def _write_macro(self):
@@ -76,6 +82,8 @@ class GridMacroBuilder(BMMMacroBuilder):
             if m['detectorx'] is not None:
                 if self.check_limit(user_ns['xafs_detx'], m['detectorx']) is False: return False
                 self.content += self.tab + f'yield from mv(xafs_detx, {m["detectorx"]:.2f})\n'
+
+            ## 2 mandatory motors
             if m['position1'] is not None and m['position2'] is not None:
                 if self.check_limit(m['motor1'], m['position1']) is False: return False
                 if self.check_limit(m['motor2'], m['position2']) is False: return False
@@ -99,12 +107,31 @@ class GridMacroBuilder(BMMMacroBuilder):
                     self.content += self.tab + f'gmb.motor2, gmb.position2 = {m["motor2"]}, {m["position2"]}\n'
                     self.content += self.tab + f'yield from mv({m["motor2"]}, {m["position2"]:.3f})\n'
 
-            if type(m['position3']) is not int and m['position3'] is not None:
-                if self.check_limit(m['motor3'], m['position3']) is False: return False
-                self.content += self.tab + f'gmb.motor3, gmb.position3 = {m["motor3"]}, {m["position3"]}\n'
-                self.content += self.tab + f'yield from mv({m["motor3"]}, {m["position3"]:.3f})\n'
-                self.motor3    = m["motor3"]
-                self.position3 = m["position3"]
+            ## 3 optional motors
+            for i in (3,4,5):
+                thismotor = m[f'motor{i}']
+                thisposition = m[f'position{i}']
+                if thismotor is not None and thisposition is not None:
+                    if self.check_limit(m['motor3'], m['position3']) is False:
+                        return False
+                    self.content += self.tab + f'gmb.motor{i}, gmb.position{i} = {thismotor}, {thisposition}\n'
+                    if thismotor == 'xafs_garot':
+                        if int(thisposition) < 1 or int(thisposition) > 8:
+                            cprint(f'\n[yellow2]{m["filename"]}: xafs_garot positions must be in the range 1-8 (inclusive)[/yellow2]\n')
+                            raise ValueError('xafs_garot positions must be in the range 1-8 (inclusive)')
+                        self.content += self.tab + f'yield from ga.to({int(thisposition)})\n'
+                    elif thismotor == 'xafs_wheel':
+                        if int(thisposition) < 1 or int(thisposition) > 8:
+                            cprint(f'\n[yellow2]{m["filename"]}: xafs_wheel positions must be in the range 1-24 (inclusive)[/yellow2]\n')
+                            raise ValueError('xafs_wheel positions must be in the range 1-24 (inclusive)')
+                        self.content += self.tab + f'yield from slot({int(thisposition)})\n'
+                    elif thismotor == 'xafs_ref':
+                        raise ValueError('Not currently using xafs_ref in grid automation.')
+                    else:
+                        self.content += self.tab + f'yield from mv({thismotor}, {thisposition:.3f})\n'
+                        
+                    setattr(self, f'motor{i}', thismotor)
+                    setattr(self, f'position{i}', thisposition)
 
             if m['slitwidth'] is not None:
                 if self.check_limit(user_ns['slits3'].hsize, m['slitwidth']) is False: return False
@@ -213,9 +240,11 @@ class GridMacroBuilder(BMMMacroBuilder):
         type.
 
         '''
-        motor3 = 0
-        if 'detector' not in str(self.ws['U5'].value).lower():
-            motor3 = 2
+
+        version = int(self.version.split()[1])
+        if version <= 16:
+            raise ValueError('You MUST use at least version 17 of the grid spreadsheet! (as of 2025-07-07))')
+        
         this = {'default':     defaultline,
                 'measure':     self.truefalse(row[2].value, 'measure'), # filename and visualization
                 'filename':    str(row[3].value),
@@ -232,24 +261,25 @@ class GridMacroBuilder(BMMMacroBuilder):
                 'steps':       str(row[14].value),
                 'times':       str(row[15].value),
                 'detectorx':   row[16].value,
-                'motor1':      row[17].value,     # motor names and positions 
-                'position1':   self.nonezero(row[18].value),
-                'motor2':      row[19].value,
-                'position2':   self.nonezero(row[20].value),
-                'slitwidth':   row[21+motor3].value,
-                'slitheight':  row[22+motor3].value,
-                'snapshots':   self.truefalse(row[23+motor3].value, 'snapshots' ),  # flags
-                'htmlpage':    self.truefalse(row[24+motor3].value, 'htmlpage'  ),
-                'usbstick':    self.truefalse(row[25+motor3].value, 'usbstick'  ),
-                'bothways':    self.truefalse(row[26+motor3].value, 'bothways'  ),
-                'channelcut':  self.truefalse(row[27+motor3].value, 'channelcut'),
-                'ththth':      self.truefalse(row[28+motor3].value, 'ththth'    ),
-                'url':         row[29+motor3].value,
-                'doi':         row[30+motor3].value,
-                'cif':         row[31+motor3].value, }
-        if motor3 == 2:
-            this['motor3']    = row[21].value
-            this['position3'] = self.nonezero(row[22].value)
-        if this['position3'] == 0.0:
-            this['position3'] = int(this['position3'])
+                'motor1':      self.motor1,     # motor names and positions 
+                'position1':   self.nonezero(row[17].value),
+                'motor2':      self.motor2,
+                'position2':   self.nonezero(row[18].value),
+                'motor3':      self.motor3,
+                'position3':   self.nonezero(row[19].value),
+                'motor4':      self.motor4,
+                'position4':   self.nonezero(row[20].value),
+                'motor5':      self.motor5,
+                'position5':   self.nonezero(row[21].value),
+                'slitwidth':   row[22].value,
+                'slitheight':  row[23].value,
+                'snapshots':   self.truefalse(row[24].value, 'snapshots' ),  # flags
+                'htmlpage':    self.truefalse(row[25].value, 'htmlpage'  ),
+                'usbstick':    self.truefalse(row[26].value, 'usbstick'  ),
+                'bothways':    self.truefalse(row[27].value, 'bothways'  ),
+                'channelcut':  self.truefalse(row[28].value, 'channelcut'),
+                'ththth':      self.truefalse(row[29].value, 'ththth'    ),
+                'url':         row[30].value,
+                'doi':         row[31].value,
+                'cif':         row[32].value, }
         return this
