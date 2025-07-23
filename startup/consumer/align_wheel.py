@@ -17,7 +17,8 @@ class AlignWheel():
     x_center = 0
     x_amplitude = 0
     x_detector = ''
-
+    x_offset = 1
+    
     y_xaxis = []
     y_data = []
     y_best_fit = []

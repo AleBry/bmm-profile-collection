@@ -113,6 +113,23 @@ class KillSwitch(Device):
         switch = getattr(self, mc)
         switch.put(0)
 
+    def allon(self):
+        for mc in ('dcm', 'slits2', 'm2', 'm3', 'dm3'):
+            self.enable(mc)
+        
+    def alloff(self):
+        for mc in ('dcm', 'slits2', 'm2', 'm3', 'dm3'):
+            self.kill(mc)
+
+    def checkall(self):
+        ok = True
+        for mc in ('dcm', 'slits2', 'm2', 'm3', 'dm3'):
+            switch = getattr(self, mc)
+            if switch.get() == 1:
+                disconnected_msg(f'{mc} controller is disabled')
+                ok = False
+        return(ok)
+
     def cycle(self, mc=None):
         '''Cycle power to the amplifiers on a motor controller, then reenable
         the motors on that controller.

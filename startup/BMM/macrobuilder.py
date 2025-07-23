@@ -172,7 +172,10 @@ class BMMMacroBuilder():
             self.basename = sheet
         else:
             self.ws = self.wb.active
-        self.basename = re.sub('[ \-+*/]+', '_', self.basename)
+        self.basename = re.sub('[ \-+*/%^#@]+', '_', self.basename)  # macro name cannot contain other symbols
+        if re.match('^[a-z]', self.basename) is None:  # macro name has to start with a letter
+            self.basename = 'Tab_' + self.basename
+            whisper(f'\nMacro names must start with letters.  Setting macro basename to {self.basename}\n')
         self.ini      = os.path.join(self.folder, self.basename+'.ini')
         self.macro    = os.path.join(self.folder, self.basename+'_macro.py')
 
@@ -369,7 +372,7 @@ class BMMMacroBuilder():
 
         for k in ('sample', 'prep', 'comment'):
             if default[k] is None or str(default[k]).strip() == '':
-                default[k] = '...'
+                default[k] = f'(no {k} metadata provided by user)'
             if '%' in default[k]:
                 default[k] = default[k].replace('%', '%%')
 

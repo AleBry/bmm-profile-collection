@@ -1,9 +1,13 @@
-import os, sys, re, socket, ast, datetime, pathlib
+import os, sys, re, socket, ast, datetime, pathlib, uuid
 from urllib.parse import quote
 import numpy, pandas, openpyxl
 from scipy.io import savemat
 from bluesky import __version__ as bluesky_version
 import traceback
+
+from databroker.queries import TimeRange
+from tiled.queries import FullText, Regex, Eq
+
 
 from pygments import highlight
 from pygments.lexers import PythonLexer, IniLexer
@@ -1102,8 +1106,10 @@ class XASFile():
         '''Write an XDI-style file for an XAS scan.
 
         '''
-        
-        xdi = catalog[uid].metadata["start"]["XDI"]
+        metadata = catalog[uid].metadata
+        xdi = metadata["start"]["XDI"]
+        if filename is None:
+            filename = xdi['_filename']
         fname = os.path.join(experiment_folder(catalog, uid), filename)
         handle = open(fname, 'w')
         handle.write(f'# XDI/1.0 BlueSky/{bluesky_version} BMM/{pathlib.Path(sys.executable).parts[-3]}\n')
@@ -1116,14 +1122,14 @@ class XASFile():
                 if family == 'Sample' and k == 'extra_metadata':
                     continue
                 handle.write(f'# {family}.{k}: {xdi[family][k]}\n')
-        start = datetime.datetime.fromtimestamp(catalog[uid].metadata['start']['time']).strftime("%Y-%m-%dT%H:%M:%S") # '%A, %d %B, %Y %I:%M %p')
-        end   = datetime.datetime.fromtimestamp(catalog[uid].metadata['stop']['time']).strftime("%Y-%m-%dT%H:%M:%S") # '%A, %d %B, %Y %I:%M %p')
+        start = datetime.datetime.fromtimestamp(metadata['start']['time']).strftime("%Y-%m-%dT%H:%M:%S") # '%A, %d %B, %Y %I:%M %p')
+        end   = datetime.datetime.fromtimestamp(metadata['stop']['time']).strftime("%Y-%m-%dT%H:%M:%S") # '%A, %d %B, %Y %I:%M %p')
         handle.write(f'# Scan.start_time: {start}\n')
         handle.write(f'# Scan.end_time: {end}\n')
         handle.write(f'# Scan.uid: {uid}\n')
-        handle.write(f'# Scan.transient_id: {catalog[uid].metadata["start"]["scan_id"]}\n')
+        handle.write(f'# Scan.transient_id: {metadata["start"]["scan_id"]}\n')
         
-        if any(x in catalog[uid].metadata['start']['detectors'] for x in ('1-element SDD', '4-element SDD', '7-element SDD')):
+        if any(x in metadata['start']['detectors'] for x in ('1-element SDD', '4-element SDD', '7-element SDD')):
             hdf5files = file_resource(catalog, uid)
             for h in hdf5files:
                 relative = '/'.join(h.split('/')[-6:])
@@ -1145,43 +1151,43 @@ class XASFile():
         ## Column.N header lines
         column_list = ['dcm_energy', 'dcm_energy_setpoint', 'dwti_dwell_time', 'I0', 'It', 'Ir']
         column_labels = ['energy', 'requested_energy', 'measurement_time', 'xmu', 'I0', 'It', 'Ir']
-        if 'yield' in catalog[uid].metadata['start']['plan_name'] or include_yield is True:
+        if 'yield' in metadata['start']['plan_name'] or include_yield is True:
             handle.write( '# Column.8: Iy nA\n')
             column_list.append('Iy')
             column_labels.append('Iy')
 
         
-        el = catalog[uid].metadata['start']['XDI']['Element']['symbol']
+        el = metadata['start']['XDI']['Element']['symbol']
         nchan = 0
-        if '1-element SDD' in catalog[uid].metadata['start']['detectors']:
+        if '1-element SDD' in metadata['start']['detectors']:
             nchan = 1
             column_list.append(f'{el}8')
             column_labels.append(f'{el}8')
             handle.write(f'# Column.8: {el}8\n')
-        elif '4-element SDD' in catalog[uid].metadata['start']['detectors']:
+        elif '4-element SDD' in metadata['start']['detectors']:
             column_list.extend([f'{el}1', f'{el}2', f'{el}3', f'{el}4'])
             column_labels.extend([f'{el}1', f'{el}2', f'{el}3', f'{el}4'])
             nchan = 4
-            if 'pilatus100k-1' in catalog[uid].metadata['start']['detectors']:
+            if 'pilatus100k-1' in metadata['start']['detectors']:
                 column_list.extend(['diffuse', 'specular'])
                 column_labels.extend(['diffuse', 'specular'])
                 
-        elif '7-element SDD' in catalog[uid].metadata['start']['detectors']:
+        elif '7-element SDD' in metadata['start']['detectors']:
             column_list.extend([f'{el}1', f'{el}2', f'{el}3', f'{el}4', f'{el}5', f'{el}6', f'{el}7'])
             column_labels.extend([f'{el}1', f'{el}2', f'{el}3', f'{el}4', f'{el}5', f'{el}6', f'{el}7'])
             nchan = 7
-            if 'pilatus100k-1' in catalog[uid].metadata['start']['detectors']:
+            if 'pilatus100k-1' in metadata['start']['detectors']:
                 column_list.extend(['diffuse', 'specular'])
                 column_labels.extend(['diffuse', 'specular'])
                 
         if nchan > 0:
-            if 'yield' in catalog[uid].metadata['start']['plan_name'] or include_yield is True:
+            if 'yield' in metadata['start']['plan_name'] or include_yield is True:
                 for i in range(1, nchan+1):
                     handle.write(f'# Column.{i+8}: {el}{i}\n')
             else:
                 for i in range(1, nchan+1):
                     handle.write(f'# Column.{i+7}: {el}{i}\n')
-        if 'pilatus100k-1' in catalog[uid].metadata['start']['detectors']:
+        if 'pilatus100k-1' in metadata['start']['detectors']:
             handle.write(f'# Column.{8+nchan}: diffuse\n')
             handle.write(f'# Column.{9+nchan}: specular\n')
 
@@ -1190,19 +1196,19 @@ class XASFile():
         xa = catalog[uid].primary.read(column_list)
         p = xa.to_pandas()
         column_list.insert(3, 'xmu')
-        if '1-element SDD' in catalog[uid].metadata['start']['detectors']:
+        if '1-element SDD' in metadata['start']['detectors']:
             p['xmu'] = p[f'{el}8']/p['I0']
-        elif '4-element SDD' in catalog[uid].metadata['start']['detectors']:
+        elif '4-element SDD' in metadata['start']['detectors']:
             p['xmu'] = (p[f'{el}1']+p[f'{el}2']+p[f'{el}3']+p[f'{el}4'])/p['I0']
-        elif '7-element SDD' in catalog[uid].metadata['start']['detectors']:
+        elif '7-element SDD' in metadata['start']['detectors']:
             p['xmu'] = (p[f'{el}1']+p[f'{el}2']+p[f'{el}3']+p[f'{el}4']+p[f'{el}5']+p[f'{el}6']+p[f'{el}7'])/p['I0']
-        elif 'transmission' in catalog[uid].metadata['start']['plan_name']:
+        elif 'transmission' in metadata['start']['plan_name']:
             p['xmu'] = numpy.log(p['It']/p['I0'])
-        elif 'reference' in catalog[uid].metadata['start']['plan_name']:
+        elif 'reference' in metadata['start']['plan_name']:
             p['xmu'] = numpy.log(p['Ir']/p['It'])
-        elif 'yield' in catalog[uid].metadata['start']['plan_name']:
+        elif 'yield' in metadata['start']['plan_name']:
             p['xmu'] = p['Iy']/p['It']
-        elif 'test' in catalog[uid].metadata['start']['plan_name']:
+        elif 'test' in metadata['start']['plan_name']:
             p['xmu'] = p['I0']
         else:
             p['xmu'] = numpy.log(p['It']/p['I0'])
@@ -1225,6 +1231,51 @@ class XASFile():
         log_entry(logger, f'wrote XAS data to {fname}')
 
 
+    def everyxas(self, catalog=None, gup=None, since=None, until=None, groupby='webcam', logger=None):
+        if gup is None or since is None or until is None:
+            print('insufficient information for generating XAS files')
+            return
+
+        
+        timequery = TimeRange(since=since, until=until, timezone="US/Eastern")
+        timespan  = catalog.search(timequery)                         # all scans within the time window -->
+        allscans  = timespan.search(Eq('proposal.proposal_id', gup))  # all scans within time window AND from GUP experimemt -->
+        allxas    = allscans.search(Regex('plan_name', 'scan_nd'))    # only the XAS scans
+
+        ## figure out how to recognize the scans in a sequence
+        if groupby is not None:
+            if groupby not in ('webcam', 'anacam', 'usbcam', 'usbcam1', 'usbcam2', 'xrf', 'ga'):
+                groupby = 'webcam'
+            if groupby == 'ga':
+                groupby = 'ga_yuid'
+            elif groupby == 'usbcam':
+                groupby = 'usbcam2_uid'
+            else:
+                groupby = groupby + '_uid'
+            
+        ## weed out the incomplete scans
+        result = []
+        groups = {}
+        for x in allxas:
+            #print(x, allxas[x].metadata['stop']['num_events']['primary'], allxas[x].metadata['start']['num_points'])
+            if allxas[x].metadata['stop']['num_events']['primary'] == allxas[x].metadata['start']['num_points']:
+                ## if complete, generate the data file
+                self.to_xdi(catalog=catalog, uid=x, logger=logger)
+                ## gather together scans from sequences for the purpose of generating dossier files
+                grouping_uid = allxas[x].metadata['start']['XDI']['_snapshots'][groupby]
+                if grouping_uid in groups:
+                    groups[grouping_uid].append(x)
+                else:
+                    groups[grouping_uid] = [x,]
+
+        ## generate dossier files
+        if groupby is not None:
+            for k in groups.keys():
+                dossier = BMMdossier()
+                dossier.rid = str(uuid.uuid4())[:8]
+                dossier.uidlist = groups[k]
+                dossier.write(catalog, logger)
+        
 
 class SEADFile():
 

@@ -350,13 +350,13 @@ def rectanglefit(catalog=None, uid=None, motor=None, signal='It', drop=None, aw=
         fig.canvas.manager.show()
         fig.canvas.flush_events()
     
-    if aw is not None and aw.ongoing is True:  # i.e. if currently doing a ga auto-alignment
+    if aw is not None and aw.ongoing is True:  # i.e. if currently doing a find_slot()
         direction =  motor.split('_')[1]
         if direction == 'x':
             aw.x_xaxis = list(positions)
             aw.x_data = list(ss)
             aw.x_best_fit = list(out.best_fit)
-            aw.x_center = target
+            aw.x_center = target-aw.x_offset
             aw.x_amplitude = amplitude
             aw.x_detector = signal.lower()
         else:

@@ -12,11 +12,11 @@ import matplotlib
 from BMM import user_ns as user_ns_module
 user_ns = vars(user_ns_module)
 
-from BMM.functions  import now
-from BMM.kafka      import kafka_message
-from BMM.logging    import BMM_msg_hook
-from BMM.suspenders import BMM_suspenders, BMM_clear_suspenders
-from BMM.workspace  import rkvs
+from BMM.functions      import now
+from BMM.kafka          import kafka_message
+from BMM.logging        import BMM_msg_hook
+from BMM.suspenders     import BMM_suspenders, BMM_clear_suspenders
+from BMM.workspace      import rkvs
 
 from BMM.user_ns.base        import profile_configuration
 from BMM.user_ns.bmm         import BMMuser
@@ -65,8 +65,11 @@ def resting_state():
         electrometer.acquire.put(1)
         electrometer.acquire_mode.put(0)
     dcm.kill()
+    user_ns['dcm_bragg'].clear_encoder_loss()
     dcm.mode = 'fixed'
     user_ns['m2_bender'].kill()
+    if 'ga' in user_ns:
+        user_ns['ga'].alloff()
     kafka_message({'resting_state': True,})
     #user_ns['RE'].msg_hook = BMM_msg_hook
     if is_re_worker_active() is False:
@@ -106,7 +109,10 @@ def resting_state_plan():
         yield from mv(electrometer.acquire_mode, 0)
     #yield from mv(user_ns['dm3_bct'].kill_cmd, 1)
     yield from sleep(0.2)
+    if 'ga' in user_ns:
+        yield from user_ns['ga'].alloff_plan()
     yield from dcm.kill_plan()
+    yield from mv(user_ns['dcm_bragg'].clear_enc_lss, 1)
     user_ns['m2_bender'].kill()
     dcm.mode = 'fixed'
     kafka_message({'resting_state': True,})
@@ -150,7 +156,10 @@ def end_of_macro():
     yield from mv(_locked_dwell_time, 0.5)
     #yield from mv(user_ns['dm3_bct'].kill_cmd, 1)
     yield from sleep(0.2)
+    if 'ga' in user_ns:
+        yield from user_ns['ga'].alloff_plan()
     yield from dcm.kill_plan()
+    yield from mv(user_ns['dcm_bragg'].clear_enc_lss, 1)
     user_ns['m2_bender'].kill()
     yield from xafs_wheel.recenter()
     dcm.mode = 'fixed'

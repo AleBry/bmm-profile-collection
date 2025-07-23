@@ -274,6 +274,12 @@ def change_edge(el, focus=False, edge='K', energy=None, slits=False, mirror=True
                 yield from null()
                 return
 
+        if user_ns['ks'].checkall() is False:
+            error_msg('One or more motor controllers is disabled.')
+            bold_msg('Quitting change_edge() macro....\n')
+            yield from null()
+            return
+            
         if xafs_table_ok is False:
             error_msg('XAFS table positions looks strange.  Check user_offset values for xafs_yu, xafs_ydi, and xafs_ydo.')
             bold_msg('Quitting change_edge() macro....\n')

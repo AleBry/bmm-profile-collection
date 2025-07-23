@@ -405,6 +405,15 @@ if WITH_RADIOLOGICAL:
         print(E)
         print('Unable to read Tc reference configuration from INI file')
         pass
+    try:
+        thorium = profile_configuration.get('experiments', 'th_ref').split()
+        thorium[0] = int(thorium[0])
+        thorium[1] = int(thorium[1])
+        xafs_ref.mapping['Th'] = thorium
+    except Exception as E:
+        print(E)
+        print('Unable to read Th reference configuration from INI file')
+        pass
 
 
 
@@ -428,7 +437,7 @@ def set_reference_wheel(position=None):
 if rkvs.get('BMM:ref:outer') is None:
     xafs_ref.outer_position = 0.0
     error_msg('\t\t\t\tReference wheel is not aligned!')
-else:
+elif profile_configuration.getboolean('experiments', 'use_reference') is True:    
     set_reference_wheel(float(rkvs.get('BMM:ref:outer')))
 #    xafs_ref.outer_position   = float(rkvs.get('BMM:ref:outer'))
 #xafs_ref.inner_position = xafs_ref.outer_position + 26.5 # xafs_ref.outer_position + ~26.5

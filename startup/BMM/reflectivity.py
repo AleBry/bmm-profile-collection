@@ -127,7 +127,7 @@ class ResonantReflectivityMacroBuilder(BMMMacroBuilder):
         count = 0
 
 
-        self.content += 'ga.spin = False\n\n'
+        self.content += self.tab + 'ga.spin = False\n\n'
         if self.nreps > 1:
             self.content += self.tab + f'for rep in range({self.nreps}):\n\n'
             self.tab = ' '*12
@@ -307,8 +307,8 @@ class ResonantReflectivityMacroBuilder(BMMMacroBuilder):
                 'relativep':  row[17].value,
                 'samplep':    row[18].value,     # other motors
                 'sampley':    row[19].value,
-                'samplex':    row[20].value,
-                'spinner':    row[21].value,
+                'samplex':    row[21].value,
+                'spinner':    row[20].value,
                 'roi2':       re.sub(r'\s+', ' ', re.sub(r',', ' ', str(row[22].value))).split(),
                 'roi3':       re.sub(r'\s+', ' ', re.sub(r',', ' ', str(row[23].value))).split(),
                 'slitwidth':  row[24].value,

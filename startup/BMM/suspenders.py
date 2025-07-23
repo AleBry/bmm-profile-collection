@@ -59,7 +59,7 @@ try:
                                               post_plan=beamup_message)
         all_BMM_suspenders.append(suspender_ring_current)
 except Exception as e:
-    error_msg(f'failed to create ring current suspender: {e}')
+    raise ValueError(f'failed to create ring current suspender: {e}')
     pass
 
 ## ----------------------------------------------------------------------------------

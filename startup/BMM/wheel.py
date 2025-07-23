@@ -16,6 +16,8 @@ from BMM.logging        import report
 from BMM.xafs_functions import conventional_grid
 from BMM.workspace      import rkvs
 
+from BMM.user_ns.base import profile_configuration
+
 from BMM import user_ns as user_ns_module
 user_ns = vars(user_ns_module)
 
@@ -191,6 +193,8 @@ def reference(target=None):
 
 
 def determine_reference():
+    if profile_configuration.getboolean('experiments', 'use_reference') is False:
+        return 'None'
     xafs_ref  = user_ns['xafs_ref']
     xafs_refx = user_ns['xafs_refx']
     slot  = round((-15+xafs_ref.position) / (-15)) % 24
@@ -208,7 +212,7 @@ def show_reference_wheel():
     xafs_ref = user_ns['xafs_ref']
 
     def write_text(current_ref, k):
-        if k in ('Th', 'U', 'Pu'):              # skip elements which use other elements
+        if k in ('Th', 'U', 'Pu', 'Tc'):        # skip elements which use other elements
             return('')
         elif k == current_ref:                  # green: current position of reference wheel
             return('[yellow1]%4.4s[/yellow1]   ' % k)
@@ -237,6 +241,25 @@ def show_reference_wheel():
 
         boxedtext(text, title=f"Reference wheel, {which} ring", color='yellow')
 
+    if profile_configuration.getboolean('experiments', 'radiological') is True:
+        text = ''
+        for key in profile_configuration['experiments'].keys():
+            if '_ref' not in key:
+                continue
+            elem = key.split('_')[0].capitalize()
+            if elem == user_ns['BMMuser'].element:
+                elem = f'[yellow1]{elem}[/yellow1]'
+            data = profile_configuration.get('experiments', key).split()
+            ring = 'outer'
+            if data[0] == 1:
+                ring = 'inner'
+            slot = data[1]
+            text += f'  {elem:>2}: {ring} ring, slot [white]{slot}[/white]\n'
+        boxedtext(text[:-1], title=f"Radiological reference wheel", color='yellow')
+
+    
+
+        
 class WheelMacroBuilder(BMMMacroBuilder):
     '''A class for parsing specially constructed spreadsheets and
     generating macros for measuring XAS on the BMM wheel.

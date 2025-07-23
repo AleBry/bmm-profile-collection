@@ -423,7 +423,7 @@ def attain_energy_position(value):
     dcm_bragg.clear_encoder_loss()
     yield from mv(dcm.energy, value)
     count = 0
-    while abs(dcm.energy.position - value) > 0.1 :
+    while abs(dcm.energy.position - value) > 0.2 :
         if count > 4:
             error_msg('Unresolved encoder loss on Bragg axis.  Stopping XAFS scan.')
             BMMuser.final_log_entry = False

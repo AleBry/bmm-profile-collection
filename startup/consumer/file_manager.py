@@ -220,7 +220,10 @@ def manage_files_from_kafka_messages(beamline_acronym):
                     include_yield = True
                 else:
                     include_yield = False
-                xdi.to_xdi(catalog=bmm_catalog, uid=message['uid'], filename=message['filename'], logger=logger, include_yield=include_yield)
+                xdi.to_xdi(catalog=bmm_catalog, uid=message['uid'], logger=logger, include_yield=include_yield) # , filename=message['filename']
+
+            elif 'everyxas' in message
+                xdi.everyxas(catalog=bmm_catalog, gup=message['gup'], since=message['since'], until=message['until'], logger=logger)
                     
             elif 'seadxdi' in message:
                 sead.to_xdi(catalog=bmm_catalog, uid=message['uid'], filename=message['filename'], logger=logger)

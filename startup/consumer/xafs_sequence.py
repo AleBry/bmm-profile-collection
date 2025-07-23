@@ -102,21 +102,21 @@ class XAFSSequence():
             toplot = self.panlist[0]
         else:
             toplot = self.kek.merge()
-            try:
-                if prj is True and get_backend().lower() == 'agg':
-                    ## build filename from name of associated png file
-                    filename = filename.replace('snapshots', 'prj')
-                    filename = filename.replace('.png', f'_{seqnumber:02d}.prj')
-                    location = os.path.join(experiment_folder(self.catalog, self.uidlist[0]), filename)
-                    project = create_athena(location)
-                    for g in self.panlist:
-                        project.add_group(g.group)
-                    project.save()
-                    self.fix_project(filename)
-            except Exception as E:
-                print('xafs_sequence.merge: failed to make project file')
-                print(E)
-                #return 0
+            # try:
+            #     if prj is True and get_backend().lower() == 'agg':
+            #         ## build filename from name of associated png file
+            #         filename = filename.replace('snapshots', 'prj')
+            #         filename = filename.replace('.png', f'_{seqnumber:02d}.prj')
+            #         location = os.path.join(experiment_folder(self.catalog, self.uidlist[0]), filename)
+            #         project = create_athena(location)
+            #         for g in self.panlist:
+            #             project.add_group(g.group)
+            #         project.save()
+            #         self.fix_project(filename)
+            # except Exception as E:
+            #     print('xafs_sequence.merge: failed to make project file')
+            #     print(E)
+            #     #return 0
         toplot.facecolor = (0.95, 0.95, 0.95)
         name = self.catalog[self.uidlist[0]].metadata['start']['XDI']['Sample']['name']
         if name == 'None': return 0

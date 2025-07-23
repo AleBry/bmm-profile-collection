@@ -152,7 +152,7 @@ class BMMPilatus(AreaDetector):
 
     threshold_energy   = C(EpicsSignalWithRBV, 'cam1:ThresholdEnergy')
     photon_energy      = C(EpicsSignalWithRBV, 'cam1:Energy')
-    gain               = C(EpicsSignalWithRBV, 'cam1:GainMenu')
+    gain               = C(EpicsSignal,        'cam1:GainMenu')
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -341,10 +341,11 @@ if with_pilatus is True:
     pilatus.roi2.name  = "diffuse"
     pilatus.roi3.name  = "specular"
     #if pilatus.hdf5.run_time.get() == 0.0:
-    pilatus.hdf5.warmup()
     pilatus.gain.put(0)         # 7-30KeV/Fast/LowG
-    pilatus.photon_energy.put(dcm.energy.readback.get())
-    
+    pilatus.photon_energy.put(dcm.energy.readback.get()/1000)
+    pilatus.hdf5.stage_sigs['num_capture'] = 1
+    pilatus.hdf5.warmup()
+
     ## starting ROI values
     roivalues = {'ROI2:MinX': 50,  'ROI2:SizeX': 50, 'ROI2:MinY': 50, 'ROI2:SizeY': 50,
                  'ROI3:MinX': 150, 'ROI3:SizeX': 50, 'ROI3:MinY': 50, 'ROI3:SizeY': 50, }
