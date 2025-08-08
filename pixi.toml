@@ -1,0 +1,37 @@
+[project]
+channels = ["conda-forge"]
+description = "Beamline profile for xf06bm"
+name = "bmm-profile-collection"
+platforms = ["linux-64"]
+version = "2025-2.1"
+
+[system-requirements]
+
+[feature.profile.dependencies]
+bluesky-base = "*"
+tiled-client = ">=0.1.0b11,<0.1.0b30"
+tiled-server = ">=0.1.0b11,<0.1.0b30"
+python = ">3.12"
+nslsii = "*"
+
+[feature.terminal.dependencies]
+ipython = "*"
+
+[feature.terminal.tasks]
+start = "ipython --profile-dir=."
+pvs = "ipython --profile-dir=. -c 'get_pv_types(); exit()'"
+
+[feature.qs.dependencies ]
+"bluesky-httpserver" = "*"
+
+[feature.qs.tasks]
+# This section needs some development work to understand the best way to
+# thread the required configuration through both the task and files checked into
+# the profile.  These will interact with the ansible roles for pushing out the
+# systemd units
+qs-backend = "start-re-manager --profile-dir=."
+qs-server = "uvicorn --host localhost --port 60610 bluesky_httpserver.server:app"
+
+[environments]
+terminal = {features=["profile", "terminal"], solve-group="profile"}
+qs = {features=["profile", "qs"], solve-group="profile"}

@@ -170,3 +170,7 @@ startup/consumer/attic/
 startup/BMM_common/xdi.py
 startup/consumer/larch_interface.py
 startup/testing/
+
+# pixi environments
+.pixi
+*.egg-info
