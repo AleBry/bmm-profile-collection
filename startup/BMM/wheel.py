@@ -212,7 +212,7 @@ def show_reference_wheel():
     xafs_ref = user_ns['xafs_ref']
 
     def write_text(current_ref, k):
-        if k in ('Th', 'U', 'Pu', 'Tc'):        # skip elements which use other elements
+        if k in ('Th', 'U', 'Pu', 'Tc', 'Am'):  # skip elements which use other elements
             return('')
         elif k == current_ref:                  # green: current position of reference wheel
             return('[yellow1]%4.4s[/yellow1]   ' % k)
@@ -229,11 +229,15 @@ def show_reference_wheel():
     for i, which in enumerate(['outer', 'inner']):
         text = '[bold green]    1      2      3      4      5      6      7      8      9     10     11     12[/bold green]\n '
         for k in xafs_ref.mapping.keys():
+            if xafs_ref.mapping[k][4] is False:
+                continue
             if xafs_ref.mapping[k][0] == i and xafs_ref.mapping[k][1] < 13:
                 text += write_text(this,k)
         text += '\n'
         text += '[bold green]   13     14     15     16     17     18     19     20     21     22     23     24\n[/bold green] '
         for k in xafs_ref.mapping.keys():
+            if xafs_ref.mapping[k][4] is False:
+                continue
             if xafs_ref.mapping[k][0] == i and xafs_ref.mapping[k][1] > 12:
                 text += write_text(this,k)
         if i == 0:

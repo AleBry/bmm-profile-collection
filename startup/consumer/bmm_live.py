@@ -1,7 +1,8 @@
-import os
+import os, json
 from matplotlib import get_backend
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.patches import Rectangle
 #from mpl_multitab import MplTabs
 import numpy, pandas
 import xraylib
@@ -850,18 +851,32 @@ class XRF():
 
     '''
 
+    def __init__(self, *args, **kwargs):
+        self.allrois = None
+        self.reset_rois()
+        
+    def reset_rois(self):
+        startup_dir = profile_configuration.get('services', 'startup')        
+        with open(os.path.join(startup_dir, 'rois.json'), 'r') as fl:
+            js = fl.read()
+        self.allrois = json.loads(js)
+        print('Set ROI values')
+        
+
     def plot(self, catalog, **kwargs):
-        uid=None
-        add=True
-        only=None
+        uid      = None
+        add      = True
+        only     = None
         filename = None
-        post = False
+        post     = False
+        show_roi = True
 
         uid  = kwargs['uid']
         if 'add'      in kwargs: add      = kwargs['add']
         if 'only'     in kwargs: only     = kwargs['only']
         if 'filename' in kwargs: filename = kwargs['filename']
         if 'post'     in kwargs: post     = kwargs['post']
+        if 'show_roi' in kwargs: show_roi = kwargs['show_roi']
 
         self.title = ''
         self.figure = plt.figure()
@@ -913,7 +928,7 @@ class XRF():
             plt.plot(e, ss, label=f'sum of {nelem} channels')
         else:
             for i in channels:
-                plt.plot(e, s[i-1], label=f'channel {i}')
+                plt.plot(e, s[i-1], label=f'channel {i+1}')
 
         if 'XDI' in catalog[uid].metadata['start']:
             if 'Element' in catalog[uid].metadata['start']['XDI']:
@@ -922,20 +937,31 @@ class XRF():
                     ed = catalog[uid].metadata['start']['XDI']['Element']['edge']
                     z = Z_number(el)
                     if ed.lower() == 'k':
-                        label = f'{el} Kα1'
+                        label = f'{el} Kα ROI'
                         eline = (2*xraylib.LineEnergy(z, xraylib.KL3_LINE) + xraylib.LineEnergy(z, xraylib.KL2_LINE))*1000/3
                     elif ed.lower() == 'l3':
-                        label = f'{el} Lα1'
+                        label = f'{el} Lα ROI'
                         eline = xraylib.LineEnergy(z, xraylib.L3M5_LINE)*1000
                     elif ed.lower() == 'l2':
-                        label = f'{el} Kβ1'
+                        label = f'{el} Kβ1 ROI'
                         eline = xraylib.LineEnergy(z, xraylib.L2M4_LINE)*1000
                     elif ed.lower() == 'l1':
-                        label = f'{el} Kβ3'
+                        label = f'{el} Kβ3 ROI'
                         eline = xraylib.LineEnergy(z, xraylib.L1M3_LINE)*1000
 
-                    self.axes.axvline(x = eline, color = 'brown', linewidth=1, label=label)
-                self.axes.set_xlim(2500, eline+2000)
+                    roicolor = '#aaaaaadd'
+                    self.axes.axvline(x=eline, color=roicolor, linewidth=1, label=label)
+
+                    ## highlight the ROI
+                    if show_roi is True:
+                        lower = self.allrois[el][ed.lower()]['low']  * 10
+                        upper = self.allrois[el][ed.lower()]['high'] * 10
+                        axis = plt.gca()
+                        ymin, ymax = axis.get_ylim()
+                        axis.add_patch(Rectangle((lower,ymin), upper-lower, ymax-ymin, facecolor=roicolor))
+
+                upperlimit = float(catalog[uid].metadata['start']['XDI']["_pccenergy"]) + 500
+                self.axes.set_xlim(2500, upperlimit)
         else:
             self.axes.set_xlim(2500, 20000)
         self.axes.legend(loc='best', shadow=True)

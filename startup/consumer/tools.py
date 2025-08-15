@@ -52,8 +52,11 @@ def experiment_folder(catalog, uid):
     if 'XDI' in catalog[uid].metadata['start'] and 'Facility' in catalog[uid].metadata['start']['XDI']:
         cycle = catalog[uid].metadata['start']['XDI']['Facility']['cycle']
     else:
-        cycle = facility_dict['xas-cycle']
-        
+        if 'xas_cycle' in facility_dict:
+            cycle = facility_dict['xas-cycle']
+        else:
+            cycle = facility_dict['cycle']
+            
     if DATA_SECURITY:
         folder    = os.path.join('/nsls2', 'data3', 'bmm', 'proposals', cycle, f'{proposal}')
     else:

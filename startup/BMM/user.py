@@ -26,7 +26,7 @@ from BMM.functions import error_msg, warning_msg, go_msg, url_msg, bold_msg, ver
 from BMM.kafka     import kafka_message
 from BMM.logging   import BMM_user_log, BMM_unset_user_log, report
 from BMM.periodictable import edge_energy
-from BMM.workspace import rkvs
+from BMM.workspace     import rkvs
 
 from BMM.user_ns.base import startup_dir, profile_configuration
 

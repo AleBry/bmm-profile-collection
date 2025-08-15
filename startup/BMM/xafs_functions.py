@@ -23,14 +23,14 @@ def sanitize_step_scan_parameters(bounds, steps, times):
     # bounds is one longer than steps/times, length of steps = length of times #
     ############################################################################
     if (len(bounds) - len(steps)) != 1:
-        text += error_msg('\nbounds must have one more item than steps\n')
-        text += error_msg('\tbounds = "%s"\n' % ' '.join(map(str, bounds)))
-        text += error_msg('\tsteps = "%s"\n'  % ' '.join(map(str, steps)))
+        error_msg('\nbounds must have one more item than steps\n')
+        error_msg('\tbounds = "%s"\n' % ' '.join(map(str, bounds)))
+        error_msg('\tsteps = "%s"\n'  % ' '.join(map(str, steps)))
         problem = True
     if (len(bounds) - len(times)) != 1:
-        text += error_msg('\nbounds must have one more item than times\n')
-        text += error_msg('\tbounds = "%s"\n' % ' '.join(map(str, bounds)))
-        text += error_msg('\ttimes = "%s"\n'  % ' '.join(map(str, times)))
+        error_msg('\nbounds must have one more item than times\n')
+        error_msg('\tbounds = "%s"\n' % ' '.join(map(str, bounds)))
+        error_msg('\ttimes = "%s"\n'  % ' '.join(map(str, times)))
         problem = True
 
     ############################
@@ -39,14 +39,14 @@ def sanitize_step_scan_parameters(bounds, steps, times):
     for b in bounds:
         if not isfloat(b) and b[-1:].lower() == 'k':
             if not isfloat(b[:-1]):
-                text += error_msg('\n%s is not a valid scan boundary value\n' % b)
+                error_msg('\n%s is not a valid scan boundary value\n' % b)
                 problem = True
         elif not isfloat(b):
-            text += error_msg('\n%s is not a valid scan boundary value\n' % b)
+            error_msg('\n%s is not a valid scan boundary value\n' % b)
             problem = True
 
         if not isfloat(b) and b[:1] == '-' and b[-1:].lower() == 'k':
-            text += error_msg('\nNegative bounds must be energy-valued, not k-valued (%s)\n' % b) 
+            error_msg('\nNegative bounds must be energy-valued, not k-valued (%s)\n' % b) 
             problem = True
                
     #############################
@@ -55,22 +55,22 @@ def sanitize_step_scan_parameters(bounds, steps, times):
     for s in steps:
         if not isfloat(s) and s[-1:].lower() == 'k':
             if not isfloat(s[:-1]):
-                text += error_msg('\n%s is not a valid scan step size value\n' % s)
+                error_msg('\n%s is not a valid scan step size value\n' % s)
                 problem = True
             elif float(s[:-1]) < 0:
-                text += error_msg('\nStep sizes cannot be negative (%s)\n' % s)
+                error_msg('\nStep sizes cannot be negative (%s)\n' % s)
                 problem = True
         elif not isfloat(s):
-            text += error_msg('\n%s is not a valid scan step size value\n' % s)
+            error_msg('\n%s is not a valid scan step size value\n' % s)
             problem = True
 
         if isfloat(s) and float(s) < 0:
-            text += error_msg('\nStep sizes cannot be negative (%s)\n' % s)
+            error_msg('\nStep sizes cannot be negative (%s)\n' % s)
             problem = True
         elif isfloat(s) and float(s) <= 0.09:
-            text += warning_msg('\n%s is a very small step size!\n' % s)
+            warning_msg('\n%s is a very small step size!\n' % s)
         elif not isfloat(s) and s[-1:].lower() == 'k' and isfloat(s[-1:]) and float(s[:-1]) < 0.01:
-            text += warning_msg('\n%s is a very small step size!\n' % s)
+            warning_msg('\n%s is a very small step size!\n' % s)
             
                 
     ####################################
@@ -79,22 +79,22 @@ def sanitize_step_scan_parameters(bounds, steps, times):
     for t in times:
         if not isfloat(t) and t[-1:].lower() == 'k':
             if not isfloat(t[:-1]):
-                text += error_msg('\n%s is not a valid integration time value\n' % t)
+                error_msg('\n%s is not a valid integration time value\n' % t)
                 problem = True
             elif float(t[:-1]) < 0:
-                text += error_msg('\nIntegration times cannot be negative (%s)\n' % t)
+                error_msg('\nIntegration times cannot be negative (%s)\n' % t)
                 problem = True
         elif not isfloat(t):
-            text += error_msg('\n%s is not a valid integration time value\n' % t)
+            error_msg('\n%s is not a valid integration time value\n' % t)
             problem = True
 
         if isfloat(t) and float(t) < 0:
-            text += error_msg('\nIntegration times cannot be negative (%s)\n' % t)
+            error_msg('\nIntegration times cannot be negative (%s)\n' % t)
             problem = True
         elif isfloat(t) and float(t) <= 0.1:
-            text += warning_msg('\n%s is a very short integration time!\n' % t)
+            warning_msg('\n%s is a very short integration time!\n' % t)
         elif not isfloat(t) and t[-1:].lower() == 'k' and isfloat(t[-1:]) and float(t[:-1]) < 0.05:
-            text += warning_msg('\n%s is a very short integration time!\n' % t)
+            warning_msg('\n%s is a very short integration time!\n' % t)
 
     
             
@@ -211,7 +211,7 @@ def conventional_grid(bounds=CS_BOUNDS, steps=CS_STEPS, times=CS_TIMES, e0=7112,
         timegrid = timegrid + list(tar)
         timegrid = list(numpy.round(timegrid, decimals=2))
 
-    #if element in ('Kr', 'Hg', 'Pu', 'Th', 'Ru'):
+    #if element in ('Kr', 'Hg', 'Pu', 'Th', 'Ru', 'Am'):
     #    overhead, uncertainty = tele.average()
     try:
         overhead, uncertainty, maxdpp, mindpp = tele.overhead_per_point(element) #, edge)

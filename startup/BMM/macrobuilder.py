@@ -173,7 +173,7 @@ class BMMMacroBuilder():
         else:
             self.ws = self.wb.active
         self.basename = re.sub('[ \-+*/%^#@]+', '_', self.basename)  # macro name cannot contain other symbols
-        if re.match('^[a-z]', self.basename) is None:  # macro name has to start with a letter
+        if re.match('^[a-zA-Z]', self.basename) is None:  # macro name has to start with a letter
             self.basename = 'Tab_' + self.basename
             whisper(f'\nMacro names must start with letters.  Setting macro basename to {self.basename}\n')
         self.ini      = os.path.join(self.folder, self.basename+'.ini')

@@ -80,3 +80,5 @@ class BMMEiger(AreaDetector):
 
 class BMMEigerSingleTrigger(SingleTriggerV33, BMMEiger):
     pass
+
+

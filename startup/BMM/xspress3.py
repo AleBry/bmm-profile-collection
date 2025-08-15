@@ -36,6 +36,7 @@ if sys.version_info[1] > 9:
 
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
 from BMM import user_ns as user_ns_module
 user_ns = vars(user_ns_module)
@@ -386,6 +387,13 @@ class BMMXspress3DetectorBase(Xspress3Trigger, Xspress3Detector):
                 )
                 # Azure testing error happens at this line ^
 
+    def reload_rois(self):
+        '''This reloads the rois.json file and resets all uses of that information.
+        '''
+        self.set_rois()
+        kafka_message({'reset_rois': True})
+        print('Reloaded rois.json and reset ROI values.')
+        
     def measure_roi(self):
         '''Hint the ROI currently in use for XAS
         '''
@@ -547,8 +555,17 @@ class BMMXspress3DetectorBase(Xspress3Trigger, Xspress3Detector):
         if doplot:
             self.plot(add=True, uid=uid)
         
-        
-    def plot(self, uid=None, add=False, only=None): 
+
+    def hinted_roi(self):
+        chan = self.channel01
+        for i in range(1,21):
+            roi = getattr(chan, f'mcaroi{i:02d}')
+            if int(roi.kind) == 7:
+                return roi
+        return None
+            
+            
+    def plot(self, uid=None, add=False, only=None, show_roi=True): 
         '''Make a plot appropriate for the N-element detector.
 
         The default is to sum the four channels.
@@ -588,19 +605,33 @@ class BMMXspress3DetectorBase(Xspress3Trigger, Xspress3Detector):
                 for i, sig in enumerate(s):
                     plt.plot(e, sig, label=f'channel {i+1}')
             z = Z_number(BMMuser.element)
+            roicolor = '#aaaaaadd'
             if BMMuser.edge.lower() == 'k':
-                label = f'{BMMuser.element} Kα1'
+                label = f'{BMMuser.element} Kα ROI'
                 ke = (2*xraylib.LineEnergy(z, xraylib.KL3_LINE) + xraylib.LineEnergy(z, xraylib.KL2_LINE))*1000/3
-                plt.axvline(x = ke/1.0016,  color = 'brown', linewidth=1, label=label)
+                plt.axvline(x = ke/1.0016,  color = roicolor, linewidth=1, label=label)
+                    
             elif BMMuser.edge.lower() == 'l3':
-                label = f'{BMMuser.element} Lα1'
-                plt.axvline(x = xraylib.LineEnergy(z, xraylib.L3M5_LINE)*1000, color = 'brown', linewidth=1, label=label)
+                label = f'{BMMuser.element} Lα ROI'
+                plt.axvline(x = xraylib.LineEnergy(z, xraylib.L3M5_LINE)*1000, color = roicolor, linewidth=1, label=label)
             elif BMMuser.edge.lower() == 'l2':
-                label = f'{BMMuser.element} Kβ1'
-                plt.axvline(x = xraylib.LineEnergy(z, xraylib.L2M4_LINE)*1000, color = 'brown', linewidth=1, label=label)
+                label = f'{BMMuser.element} Kβ1 ROI'
+                plt.axvline(x = xraylib.LineEnergy(z, xraylib.L2M4_LINE)*1000, color = roicolor, linewidth=1, label=label)
             elif BMMuser.edge.lower() == 'l1':
-                label = f'{BMMuser.element} Kβ3'
-                plt.axvline(x = xraylib.LineEnergy(z, xraylib.L1M3_LINE)*1000, color = 'brown', linewidth=1, label=label)
+                label = f'{BMMuser.element} Kβ3 ROI'
+                plt.axvline(x = xraylib.LineEnergy(z, xraylib.L1M3_LINE)*1000, color = roicolor, linewidth=1, label=label)
+
+            ## highlight the ROI
+            if show_roi is True:
+                roi = self.hinted_roi()
+                if roi is not None:
+                    lower = roi.min_x.get() * 10
+                    upper = lower + roi.size_x.get() * 10
+                    #plt.axvline(x=lower,  color = 'tab:gray', linewidth=1, label=label)
+                    #plt.axvline(x=upper,  color = 'tab:gray', linewidth=1, label=label)
+                    axis = plt.gca()
+                    ymin, ymax = axis.get_ylim()
+                    axis.add_patch(Rectangle((lower,ymin), upper-lower, ymax-ymin, facecolor=roicolor))
             plt.legend()
             #plt.show()
     

@@ -1,7 +1,8 @@
-import sys
+import sys, json
 sys.path.append('/home/xf06bm/.ipython/profile_collection/startup')
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 from lmfit.models import SkewedGaussianModel, RectangleModel
 import numpy, os, h5py, xraylib, datetime, pandas
 from scipy.interpolate import interp1d
@@ -9,7 +10,7 @@ from mendeleev import element
 
 from larch_interface import Pandrosus, Kekropidai
 from slack import img_to_slack, post_to_slack
-from tools import profile_configuration
+from tools import profile_configuration, element_regex1, element_regex8
 
 
 import redis
@@ -183,7 +184,7 @@ def plot_areascan(bmm_catalog, uid):
         fname = None
         
     table = record.primary.read()
-
+    
     x=numpy.array(table[fast])
     y=numpy.array(table[slow])
     xs1 = rkvs.get('BMM:user:xs1').decode('utf-8')
@@ -195,7 +196,35 @@ def plot_areascan(bmm_catalog, uid):
     elif detector.lower() == 'it':
         z=numpy.array(table['It'])
     elif detector.lower() == 'xs':
-        z=numpy.array(table[xs1]) + numpy.array(table[xs2]) + numpy.array(table[xs3]) + numpy.array(table[xs4])
+
+        fluo_detectors = record.metadata['start']['detectors']
+        el = ''
+        if '1-element SDD' in fluo_detectors:
+            for k in record.primary['data'].keys():
+                if element_regex8.match(k):
+                    el = element_regex8.match(k).groups()[0]
+                    break
+            z = numpy.array(table[el+'8']) # / numpy.array(table['I0'])
+        elif '4-element SDD' in fluo_detectors:
+            for k in record.primary['data'].keys():
+                if element_regex1.match(k):
+                    el = element_regex1.match(k).groups()[0]
+                    break
+            z = numpy.array(table[el+'1']) + numpy.array(table[el+'2']) + \
+                numpy.array(table[el+'3']) + numpy.array(table[el+'4'])     # ) / numpy.array(table['I0'])
+        elif '7-element SDD' in fluo_detectors:
+            for k in record.primary['data'].keys():
+                if element_regex1.match(k):
+                    el = element_regex1.match(k).groups()[0]
+                    break
+            z = numpy.array(table[el+'1']) +\
+                numpy.array(table[el+'2']) +\
+                numpy.array(table[el+'3']) +\
+                numpy.array(table[el+'4']) +\
+                numpy.array(table[el+'5']) +\
+                numpy.array(table[el+'6']) +\
+                numpy.array(table[el+'7'])      #) / numpy.array(table['I0'])
+        #z=numpy.array(table[xs1]) + numpy.array(table[xs2]) + numpy.array(table[xs3]) + numpy.array(table[xs4])
     else:
         z=numpy.array(table[xs1]) + numpy.array(table[xs2]) + numpy.array(table[xs3]) + numpy.array(table[xs4])
 
@@ -457,20 +486,34 @@ def xrfat(**kwargs):
                 ax.plot(ee, s7, label='channel7')
 
         if i == 0:
+            roicolor = '#aaaaaadd'
             z = element(el).atomic_number
             if ed.lower() == 'k':
-                label = f'{el} Kα1'
+                label = f'{el} Kα ROI'
                 ke = (2*xraylib.LineEnergy(z, xraylib.KL3_LINE) + xraylib.LineEnergy(z, xraylib.KL2_LINE))*1000/3
-                ax.axvline(x = ke,  color = 'brown', linewidth=1, label=label)
+                ax.axvline(x = ke,  color = roicolor, linewidth=1, label=label)
             elif ed.lower() == 'l3':
-                label = f'{el} Lα1'
-                ax.axvline(x = xraylib.LineEnergy(z, xraylib.L3M5_LINE)*1000, color = 'brown', linewidth=1, label=label)
+                label = f'{el} Lα ROI'
+                ax.axvline(x = xraylib.LineEnergy(z, xraylib.L3M5_LINE)*1000, color = roicolor, linewidth=1, label=label)
             elif ed.lower() == 'l2':
-                label = f'{el} Kβ1'
-                ax.axvline(x = xraylib.LineEnergy(z, xraylib.L2M4_LINE)*1000, color = 'brown', linewidth=1, label=label)
+                label = f'{el} Kβ1 ROI'
+                ax.axvline(x = xraylib.LineEnergy(z, xraylib.L2M4_LINE)*1000, color = roicolor, linewidth=1, label=label)
             elif ed.lower() == 'l1':
-                label = f'{el} Kβ3'
-                ax.axvline(x = xraylib.LineEnergy(z, xraylib.L1M3_LINE)*1000, color = 'brown', linewidth=1, label=label)
+                label = f'{el} Kβ3 ROI'
+                ax.axvline(x = xraylib.LineEnergy(z, xraylib.L1M3_LINE)*1000, color = roicolor, linewidth=1, label=label)
+
+        startup_dir = profile_configuration.get('services', 'startup')        
+        with open(os.path.join(startup_dir, 'rois.json'), 'r') as fl:
+            js = fl.read()
+        allrois = json.loads(js)
+
+        ## highlight the ROI
+        lower = allrois[el][ed.lower()]['low']  * 10
+        upper = allrois[el][ed.lower()]['high'] * 10
+        axis = plt.gca()
+        ymin, ymax = axis.get_ylim()
+        axis.add_patch(Rectangle((lower,ymin), upper-lower, ymax-ymin, facecolor=roicolor))                    
+        
         ax.legend()
     title  = title[0:-2]
     title += ' eV'

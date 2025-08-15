@@ -242,7 +242,7 @@ def fetch_peak_position_via_redis(maxtries=6, verbose=False):
         time.sleep(0.1 * 2**count)
         top = float(rkvs.get('BMM:peak_position').decode('utf8'))
         count += 1
-        if verbose: print(f"{count = }, {answer = }")
+        if verbose: print(f"{count = }, {top = }", flush=True)
         if count > maxtries:
             return(None)
     return top
@@ -800,7 +800,7 @@ def rectangle_scan(motor=None, start=-20, stop=20, nsteps=41, detector='It',
                                'signal'       : detector.capitalize(),
                                'motor_name'   : motor.name })
 
-                top = fetch_peak_position_via_redis()
+                top = fetch_peak_position_via_redis(verbose=True)
                 if top is None:
                     error_msg('Failed to find rectangle midpoint.')
                     raise ValueError('Failed to find rectangle midpoint.')

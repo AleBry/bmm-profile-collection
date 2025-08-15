@@ -40,6 +40,7 @@ class BMMbot():
         self._bmmbot_secret = profile_configuration.get('slack', 'bmmbot_secret')
         self._redis_client = redis.Redis(host=profile_configuration.get('services', 'nsls2_redis'))
         self._pass_api = profile_configuration.get('services', 'pass_api') + "/{pass_id}/slack-channels"
+        #self.pass_api = 'https://api-dev.nsls2.bnl.gov/v1/proposal'
 
         self.refresh_channel()
         self._auth = slurp(self._bmmbot_secret)
@@ -122,11 +123,11 @@ class BMMbot():
         self.non_chat_channel = None
         self.chat_channel     = None
         for c in self.channel_data:
-            if c['channel_name'] == data_session + '-bmm':
-                self.non_chat_channel = c['channel_id']
+            if c['name'] == data_session + '-bmm':
+                self.non_chat_channel = c['conversation_id']
                 self._post_allowed    = True
-            if c['channel_name'] == data_session:
-                self.chat_channel = c['channel_id']
+            if c['name'] == data_session:
+                self.chat_channel = c['conversation_id']
         if self.non_chat_channel is None:
             self._post_allowed = False
 

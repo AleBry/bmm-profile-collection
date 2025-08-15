@@ -1,5 +1,5 @@
 import time, json, os
-from BMM.functions import run_report, examine_fmbo_motor_group, error_msg
+from BMM.functions import run_report, examine_fmbo_motor_group, error_msg, whisper
 from BMM.workspace import rkvs
 from BMM.user_ns.base import profile_configuration
 
@@ -325,64 +325,79 @@ xafs_ref.slotone = 0        # the angular position of slot #1
 xafs_ref.x_motor = xafs_refx
 
 
-#                          ring, slot, elem, material (ring: 0=outer, 1=inner)
-xafs_ref.mapping = {'empty0': [0,  1, 'empty0', 'empty'],
-                    'Ti':     [0,  2, 'Ti', 'Ti foil'],
-                    'V' :     [0,  3, 'V',  'V foil'],
-                    'Cr':     [0,  4, 'Cr', 'Cr foil'],
-                    'Mn':     [0,  5, 'Mn', 'Mn metal powder'],
-                    'Fe':     [0,  6, 'Fe', 'Fe foil'],
-                    'Co':     [0,  7, 'Co', 'Co foil'],
-                    'Ni':     [0,  8, 'Ni', 'Ni foil'],
-                    'Cu':     [0,  9, 'Cu', 'Cu foil'],
-                    'Zn':     [0, 10, 'Zn', 'Zn foil'],
-                    'Ga':     [0, 11, 'Ga', 'Ga2O3'],
-                    'Ge':     [0, 12, 'Ge', 'GeO2'],
-                    'As':     [0, 13, 'As', 'As2O3'],
-                    'Se':     [0, 14, 'Se', 'Se metal powder'],
-                    'Br':     [0, 15, 'Br', 'bromophenol blue'],
-                    'Zr':     [0, 16, 'Zr', 'Zr foil'],
-                    'Nb':     [0, 17, 'Nb', 'Nb foil'],
-                    'Mo':     [0, 18, 'Mo', 'Mo foil'],
-                    'Pt':     [0, 19, 'Pt', 'Pt foil'],
-                    'Au':     [0, 20, 'Au', 'Au foil'],
-                    'Pb':     [0, 21, 'Pb', 'Pb foil'],
-                    'Bi':     [0, 22, 'Bi', 'BiO2'],
-                    'Sr':     [0, 23, 'Sr', 'SrTiO3'],
-                    'Y' :     [0, 24, 'Y',  'Y foil'],
-                    'Cs':     [1,  1, 'Cs', 'CsNO3'],
-                    'La':     [1,  2, 'La', 'La(OH)3'],
-                    'Ce':     [1,  3, 'Ce', 'CeO2'],
-                    'Pr':     [1,  4, 'Pr', 'Pr6O11'],
-                    'Nd':     [1,  5, 'Nd', 'Nd2O3'],
-                    'Sm':     [1,  6, 'Sm', 'Sm2O3'],
-                    'Eu':     [1,  7, 'Eu', 'Eu2O3'],
-                    'Gd':     [1,  8, 'Gd', 'Gd2O3'],
-                    'Tb':     [1,  9, 'Tb', 'Tb4O9'],
-                    'Dy':     [1, 10, 'Dy', 'Dy2O3'],
-                    'Ho':     [1, 11, 'Ho', 'Ho2O3'],
-                    'Er':     [1, 12, 'Er', 'Er2O3'],
-                    'Tm':     [1, 13, 'Tm', 'Tm2O3'],
-                    'Yb':     [1, 14, 'Yb', 'Yb2O3'],
-                    'Lu':     [1, 15, 'Lu', 'Lu2O3'],
-                    'Rb':     [1, 16, 'Rb', 'RbCO3'],
-                    'Ba':     [1, 17, 'Ba', 'None'],
-                    'Hf':     [1, 18, 'Hf', 'HfO2'],
-                    'Ta':     [1, 19, 'Ta', 'Ta2O5'],
-                    'W' :     [1, 20, 'W',  'WO3'],
-                    'Re':     [1, 21, 'Re', 'ReO2'], 
-                    'Os':     [1, 22, 'Os', 'None'],
-                    #'Ir':     [1, 23, 'Ir', 'None'],
-                    'Sc' :    [1, 23, 'Sc', 'Sc metal powder'],
-                    'Ru':     [1, 24, 'Ru', 'RuO2'],
-                    'Th':     [0, 22, 'Bi', 'BiO2'],  # use Bi L1 for Th L3
-                    'U' :     [0, 24, 'Y',  'Y foil'],  # use Y K for U L3
-                    #'U' :     [0, 24, 'U',  'UO3'],  # user supplied U standard
-                    'Pu':     [0, 16, 'Zr', 'Zr foil'],  # use Zr K for Pu L3
+#                          ring, slot, elem, material, on wheel (ring: 0=outer, 1=inner)
+xafs_ref.mapping = {'empty0': [0,  1, 'empty0', 'empty', True],
+                    'Ti':     [0,  2, 'Ti', 'Ti foil', True],
+                    'V' :     [0,  3, 'V',  'V foil', True],
+                    'Cr':     [0,  4, 'Cr', 'Cr foil', True],
+                    'Mn':     [0,  5, 'Mn', 'Mn metal powder', True],
+                    'Fe':     [0,  6, 'Fe', 'Fe foil', True],
+                    'Co':     [0,  7, 'Co', 'Co foil', True],
+                    'Ni':     [0,  8, 'Ni', 'Ni foil', True],
+                    'Cu':     [0,  9, 'Cu', 'Cu foil', True],
+                    'Zn':     [0, 10, 'Zn', 'Zn foil', True],
+                    'Ga':     [0, 11, 'Ga', 'Ga2O3', True],
+                    'Ge':     [0, 12, 'Ge', 'GeO2', True],
+                    'As':     [0, 13, 'As', 'As2O3', True],
+                    'Se':     [0, 14, 'Se', 'Se metal powder', True],
+                    'Br':     [0, 15, 'Br', 'bromophenol blue', True],
+                    'Zr':     [0, 16, 'Zr', 'Zr foil', True],
+                    'Nb':     [0, 17, 'Nb', 'Nb foil', True],
+                    'Mo':     [0, 18, 'Mo', 'Mo foil', True],
+                    'Pt':     [0, 19, 'Pt', 'Pt foil', True],
+                    'Au':     [0, 20, 'Au', 'Au foil', True],
+                    'Pb':     [0, 21, 'Pb', 'Pb foil', True],
+                    'Bi':     [0, 22, 'Bi', 'BiO2', True],
+                    'Sr':     [0, 23, 'Sr', 'SrTiO3', True],
+                    'Y' :     [0, 24, 'Y',  'Y foil', True],
+                    'Cs':     [1,  1, 'Cs', 'CsNO3', True],
+                    'La':     [1,  2, 'La', 'La(OH)3', True],
+                    'Ce':     [1,  3, 'Ce', 'CeO2', True],
+                    'Pr':     [1,  4, 'Pr', 'Pr6O11', True],
+                    'Nd':     [1,  5, 'Nd', 'Nd2O3', True],
+                    'Sm':     [1,  6, 'Sm', 'Sm2O3', True],
+                    'Eu':     [1,  7, 'Eu', 'Eu2O3', True],
+                    'Gd':     [1,  8, 'Gd', 'Gd2O3', True],
+                    'Tb':     [1,  9, 'Tb', 'Tb4O9', True],
+                    'Dy':     [1, 10, 'Dy', 'Dy2O3', True],
+                    'Ho':     [1, 11, 'Ho', 'Ho2O3', True],
+                    'Er':     [1, 12, 'Er', 'Er2O3', True],
+                    'Tm':     [1, 13, 'Tm', 'Tm2O3', True],
+                    'Yb':     [1, 14, 'Yb', 'Yb2O3', True],
+                    'Lu':     [1, 15, 'Lu', 'Lu2O3', True],
+                    'Rb':     [1, 16, 'Rb', 'RbCO3', True],
+                    'Ba':     [1, 17, 'Ba', 'None', True],     # missing standard
+                    'Hf':     [1, 18, 'Hf', 'HfO2', True],
+                    'Ta':     [1, 19, 'Ta', 'Ta2O5', True],
+                    'W' :     [1, 20, 'W',  'WO3', True],
+                    'Re':     [1, 21, 'Re', 'ReO2', True], 
+                    'Os':     [1, 22, 'Os', 'None', True],     # missing standard
+                    'Sc' :    [1, 23, 'Sc', 'Sc metal powder', True],
+                    'Ru':     [1, 24, 'Ru', 'Ru metal powder', True],
 
-                    ## Hunter college reference wheel with Tc and U -- deprecated, see BMM_configuration.ini
-                    #'U':      [1,  3, 'U',  'UO3'],
-                    #'Tc':     [1,  9, 'Tc', 'TcO4'],
+                    ## commonly measured radionuclides 
+                    'Th':     [0, 22, 'Bi', 'BiO2', False],     # use Bi L1 for Th L3
+                    'U' :     [0, 24, 'Y',  'Y foil', False],   # use Y K for U L3
+                    'Pu':     [0, 16, 'Zr', 'Zr foil', False],  # use Zr K for Pu L3
+                    'Am':     [0, 16, 'Zr', 'Zr foil', False],  # use Nb K for Am L3
+
+                    'Ca':     [0,  1, '--', 'None', False],     # missing standard, no reserved slot
+                    'Ir':     [0,  1, '--', 'None', False],     # missing standard, no reserved slot
+                    'Hg':     [0,  1, '--', 'None', False],     # missing standard, no reserved slot
+                    'Tl':     [0,  1, '--', 'None', False],     # missing standard, no reserved slot
+
+                    'Rh':     [0,  1, '--', 'None', False],     # 4d elements -- maybe L edges in the future...
+                    'Pd':     [0,  1, '--', 'None', False],
+                    'Ag':     [0,  1, '--', 'None', False],
+                    'Dd':     [0,  1, '--', 'None', False],
+                    'In':     [0,  1, '--', 'None', False],
+                    'Sn':     [0,  1, '--', 'None', False],
+                    'Sb':     [0,  1, '--', 'None', False],
+                    'Te':     [0,  1, '--', 'None', False],
+                    'I' :     [0,  1, '--', 'None', False],
+                    
+                    ## see BMM_configuration.ini for dealing with user-supplied
+                    ## standard, e.g. for radiological materials
 }
 ## missing: Tl, Hg, Ca, Sc, Th, U, Pu
 
@@ -392,27 +407,30 @@ if WITH_RADIOLOGICAL:
         uranium[0] = int(uranium[0])
         uranium[1] = int(uranium[1])
         xafs_ref.mapping['U'] = uranium
+        whisper('Set U standard location')
     except Exception as E:
         print(E)
-        print('Unable to read U reference configuration from INI file')
+        error_msg('Unable to read U reference configuration from INI file')
         pass
     try:
         technicium = profile_configuration.get('experiments', 'tc_ref').split()
         technicium[0] = int(technicium[0])
         technicium[1] = int(technicium[1])
         xafs_ref.mapping['Tc'] = technicium
+        whisper('Set Tc standard location')
     except Exception as E:
         print(E)
-        print('Unable to read Tc reference configuration from INI file')
+        error_msg('Unable to read Tc reference configuration from INI file')
         pass
     try:
         thorium = profile_configuration.get('experiments', 'th_ref').split()
         thorium[0] = int(thorium[0])
         thorium[1] = int(thorium[1])
         xafs_ref.mapping['Th'] = thorium
+        whisper('Set Th standard location')
     except Exception as E:
         print(E)
-        print('Unable to read Th reference configuration from INI file')
+        error_msg('Unable to read Th reference configuration from INI file')
         pass
 
 

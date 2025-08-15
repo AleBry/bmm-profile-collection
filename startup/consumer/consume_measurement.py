@@ -60,6 +60,9 @@ asc.logger = logger
 
 from tools import peakfit, rectanglefit, stepfit
 
+if os.getenv('USER') == 'workflow-bmm':
+    matplotlib.use('Agg')
+
 
 # these two lines allow a stale plot to remain interactive and prevent
 # the current plot from stealing focus.  thanks to Tom:
@@ -87,7 +90,8 @@ def plot_from_kafka_messages(beamline_acronym):
         if name == 'bmm':
             if any(x in message for x in ('xafs_sequence', 'glancing_angle', 'align_wheel', 'wafer', 'mono_calibration',
                                           'xrfat', 'linescan', 'xafsscan', 'timescan', 'xrf', 'areascan', 'close', 'logger', 'refresh_slack',
-                                          'peakfit', 'stepfit', 'rectanglefit')) :
+                                          'peakfit', 'stepfit', 'rectanglefit', 'reset_rois',
+                                          'backend')) :
                 if be_verbose is True:
                     print(f'\n[{datetime.datetime.now().isoformat(timespec="seconds")}]\n{pprint.pformat(message, compact=True)}')
                 else:
@@ -180,6 +184,9 @@ def plot_from_kafka_messages(beamline_acronym):
                 elif message['xrf'] == 'write':
                     xrf.to_xdi(catalog=bmm_catalog, uid=message['uid'], filename=message['filename'])
 
+            elif 'reset_rois' in message:
+                xrf.reset_rois()
+                
             elif 'peakfit' in message:
                 if 'spinner' in message:
                     spinner = message['spinner']
@@ -248,7 +255,10 @@ def plot_from_kafka_messages(beamline_acronym):
                     
             elif 'describe_slack' in message:
                 describe_slack()
-                    
+
+            elif 'backend' in message:
+                print(matplotlib.get_backend())
+                
 
                     
             # elif 'resting_state' in message:
