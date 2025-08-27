@@ -767,7 +767,7 @@ class BMM_User(Borg):
         if date is None:
             error_msg('You did not supply the start date')
             return()
-        pattern=re.compile('\d{4}\-\d{2}\-\d{2}')
+        pattern=re.compile(r'\d{4}\-\d{2}\-\d{2}')
         if pattern.fullmatch(date) is None:
             whisper(f'The start date {date} was not in the form YYYY-MM-DD')
             #return()

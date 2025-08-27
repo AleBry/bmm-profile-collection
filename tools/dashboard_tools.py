@@ -13,7 +13,7 @@ triangle = u'\u227b' # 5BA'
 
 
 #heartbeat = '⣷⣯⣟⡿⢿⣻⣽⣾' # '<^>v'  # '.o0o' # '-\|/'
-heartbeat = '-\|/'
+heartbeat = r'-\|/'
 # heartbeat = ['|.    |',
 #              '| o   |',
 #              '|  0  |', 

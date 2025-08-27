@@ -78,7 +78,7 @@ def file_resource(catalog, uid):
     for d in docs:
         if d[0] == 'resource':
             this = os.path.join(d[1]['root'], d[1]['resource_path'])
-            if '_%d' in this or re.search('%\d\.\dd', this) is not None:
+            if '_%d' in this or re.search(r'%\d\.\dd', this) is not None:
                 this = this % 0
             found.append(this)
     return found
@@ -154,7 +154,7 @@ def message_div(text='', img=None, icon='message', rid=None, measurement='xafs')
 def next_index(folder, stub):
     '''Find the next numeric filename extension for a filename stub in folder.'''
     listing = os.listdir(folder)
-    r = re.compile(re.escape(stub) + '\.\d+')
+    r = re.compile(re.escape(stub) + r'\.\d+')
     results = sorted(list(filter(r.match, listing)))
     if len(results) == 0:
         answer = 1

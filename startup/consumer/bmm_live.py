@@ -643,7 +643,7 @@ class XAFSScan():
 
         ## every plot type uses mu_t and i0
         if self.mode not in ('pilatus', 'eiger'):
-            self.mut.set_ylabel('transmission $\mu(E)$')
+            self.mut.set_ylabel(r'transmission $\mu(E)$')
             self.mut.set_xlabel('energy (eV)')
             self.mut.set_title(f'data: {self.sample}')
 
@@ -653,13 +653,13 @@ class XAFSScan():
 
         ## all plot types except transmission and reference need mu_f
         if self.mode in ('fluorescence', 'yield', 'pilatus', 'eiger', 'dante'):
-            self.muf.set_ylabel(f'fluorescence $\mu(E)$  ({self.fluo_detector})')
+            self.muf.set_ylabel(rf'fluorescence $\mu(E)$  ({self.fluo_detector})')
             self.muf.set_xlabel('energy (eV)')
             self.muf.set_title(f'data: {self.sample}')
 
         ## all plot types except pilatus/eiger need reference
         if self.mode in ('transmission', 'fluorescence', 'yield', 'dante', 'reference'):
-            self.ref.set_ylabel('reference $\mu(E)$')
+            self.ref.set_ylabel(r'reference $\mu(E)$')
             self.ref.set_xlabel('energy (eV)')
             self.ref.set_title(f'reference: {self.reference_material}')
         elif self.mode in ('pilatus', 'eiger'):  # pilatus/eiger plot re-purposes ref for diffuse
@@ -670,7 +670,7 @@ class XAFSScan():
 
         ## yield needs the iy signal
         if self.mode == 'yield':
-            self.iy.set_ylabel('electron yield $\mu(E)$')
+            self.iy.set_ylabel(r'electron yield $\mu(E)$')
             self.iy.set_xlabel('energy (eV)')
             self.iy.set_title('electron yield')
         elif self.mode in ('pilatus', 'eiger'):  # pilatus plot re-purposes iy for specular

@@ -172,7 +172,7 @@ class BMMMacroBuilder():
             self.basename = sheet
         else:
             self.ws = self.wb.active
-        self.basename = re.sub('[ \-+*/%^#@]+', '_', self.basename)  # macro name cannot contain other symbols
+        self.basename = re.sub(r'[ \-+*/%^#@]+', '_', self.basename)  # macro name cannot contain other symbols
         if re.match('^[a-zA-Z]', self.basename) is None:  # macro name has to start with a letter
             self.basename = 'Tab_' + self.basename
             whisper(f'\nMacro names must start with letters.  Setting macro basename to {self.basename}\n')
@@ -391,7 +391,7 @@ class BMMMacroBuilder():
 
         el = str(default['element']).capitalize()
         ed = str(default['edge']).lower()
-        if el not in re.split('\s+', PERIODIC_TABLE): # see 06-periodic table 
+        if el not in re.split(r'\s+', PERIODIC_TABLE): # see 06-periodic table 
             message += '\nDefault entry for element is not recognized.'
             unrecoverable = True
 
@@ -524,7 +524,7 @@ class BMMMacroBuilder():
         return False
 
     def make_filename(self, m):
-        '''Construct a filename with element and edge symbols, if required.
+        r'''Construct a filename with element and edge symbols, if required.
 
         Also remove troublesome characters from the filename.
              * / \ ? % : | " < >
