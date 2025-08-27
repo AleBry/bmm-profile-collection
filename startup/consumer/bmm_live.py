@@ -125,7 +125,7 @@ class LineScan():
     transmission_like = ('It', 'Transmission', 'Trans')
     fluorescence_like = ('If', 'Xs', 'Xs1', 'Fluorescence', 'Flourescence', 'Fluo', 'Flou', 'Dante')
     yield_like        = ('Iy', 'Yield')
-    
+
     def start(self, **kwargs):
         #if self.figure is not None:
         #    plt.close(self.figure.number)
@@ -159,7 +159,7 @@ class LineScan():
         self.detector = rkvs.get('BMM:xspress3').decode('utf-8')
         if self.detector == '1' and self.numerator in self.fluorescence_like:
             self.numerator = 'Xs1'
-        
+
         self.xs1 = rkvs.get('BMM:user:xs1').decode('utf-8')
         self.xs2 = rkvs.get('BMM:user:xs2').decode('utf-8')
         self.xs3 = rkvs.get('BMM:user:xs3').decode('utf-8')
@@ -171,7 +171,7 @@ class LineScan():
 
 
         ## todo:  bicron, new ion chambers, both
-        
+
         ## transmission: plot It/I0
         if self.numerator in self.transmission_like:
             self.numerator = 'It'
@@ -204,7 +204,7 @@ class LineScan():
             self.denominator = None
             self.axes.set_ylabel(self.numerator)
             self.axes.legend(loc='best', shadow=True)
-            
+
         ## split ion chamber
         elif self.numerator == 'Ic1':
             self.line.set_label('Ita')
@@ -218,7 +218,7 @@ class LineScan():
             self.description = 'fluorescence (SDD)'
             self.denominator = 'I0'
             self.axes.set_ylabel('fluorescence / I0')
-            
+
 
         ## fluorescence (4 channel): plot sum(If)/I0
         ##xs1, xs2, xs3, xs4 = rkvs.get('BMM:user:xs1'), rkvs.get('BMM:user:xs2'), rkvs.get('BMM:user:xs3'), rkvs.get('BMM:user:xs4')
@@ -260,12 +260,12 @@ class LineScan():
                 self.denominator = None
             self.fl.legend(loc='best', shadow=True)
             self.tr.legend(loc='best', shadow=True)
-                
+
 
         ## fluorescence (1 channel): plot If/I0
         ##xs8 = rkvs.get('BMM:user:xs8').decode('utf-8')
         #elif self.numerator == 'Xs1':
-            
+
         if self.numerator in self.fluorescence_like:
             if 'motor' in kwargs:
                 if self.stack is True:
@@ -300,9 +300,9 @@ class LineScan():
         if x is not None:
             rkvs.set('BMM:mouse_event:value', x)
             rkvs.set('BMM:mouse_event:motor', ev.canvas.figure.axes[0].get_xlabel())
-        
 
-        
+
+
         # kafka_config = _read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
         # producer = BasicProducer(bootstrap_servers=kafka_config['bootstrap_servers'],
         #                          topic='bmm.test',
@@ -314,7 +314,7 @@ class LineScan():
         # pprint.pprint(documemnt)
         # producer.produce(['bmm', document])
 
-        
+
     def stop(self, catalog, **kwargs):
         if get_backend().lower() == 'agg':
             if 'fname' in kwargs and 'uid' in kwargs:
@@ -347,7 +347,7 @@ class LineScan():
         if 'dcm_roll' in kwargs['data']:
             return              # this is a baseline event document, dcm_roll is almost never scanned
 
-        
+
         if self.numerator in self.fluorescence_like:
             if self.fluo_detector == '1-element SDD':
                 signal = kwargs['data'][self.xs8]
@@ -360,7 +360,7 @@ class LineScan():
                 signal = (kwargs['data'][self.xs1] +
                           kwargs['data'][self.xs2] +
                           kwargs['data'][self.xs3] +
-                          kwargs['data'][self.xs4] + 
+                          kwargs['data'][self.xs4] +
                           kwargs['data'][self.xs5] +
                           kwargs['data'][self.xs6] +
                           kwargs['data'][self.xs7])
@@ -368,11 +368,11 @@ class LineScan():
                 signal = (kwargs['data'][self.xs1] +
                           kwargs['data'][self.xs2] +
                           kwargs['data'][self.xs3] +
-                          kwargs['data'][self.xs4] + 
+                          kwargs['data'][self.xs4] +
                           kwargs['data'][self.xs5] +
                           kwargs['data'][self.xs6] +
                           kwargs['data'][self.xs7])
-            
+
             # if self.xs1 in kwargs['data']:  # this is a primary documemnt
             #     signal = kwargs['data'][self.xs1] + kwargs['data'][self.xs2] + kwargs['data'][self.xs3] + kwargs['data'][self.xs4]
             #     if numpy.isnan(signal):
@@ -393,13 +393,13 @@ class LineScan():
         elif self.numerator == 'Eiger':
             signal  = kwargs['data']['specular']
             signal2 = kwargs['data']['diffuse']
-    
+
         elif self.numerator in kwargs['data']:  # numerator will not be in baseline document
             signal = kwargs['data'][self.numerator]
         else:
             print(f'could not determine signal, self.numerator is {self.numerator}')
             return
-            
+
         if self.motor is None:   # this is a time scan
             if kwargs['seq_num'] == 1:
                 self.initial = kwargs['time']
@@ -417,7 +417,7 @@ class LineScan():
                 self.y3data.append(signal3)
             if self.numerator == 'Eiger':
                 self.y2data.append(signal2)
-                
+
             # self.ydata.append(signal)
             # #if self.numerator == 'Ic0' or self.numerator == 'Xs1':
             # if self.numerator in ('Xs1', 'Xs', 'If'):  # 'Ic0q', 'Ic1'
@@ -456,7 +456,7 @@ class LineScan():
     def close_all_lineplots(self):
         for i in self.plots:
             plt.close(i)
-            
+
 
 
 class XAFSScan():
@@ -538,7 +538,7 @@ class XAFSScan():
     fluorescence_like = ('Both', 'If', 'Xs', 'Xs1', 'Fluorescence', 'Flourescence', 'Fluo', 'Flou', 'Dante')
     yield_like        = ('Iy', 'Yield')
 
-    
+
     def start(self, **kwargs):
         '''Begin a sequence of XAFS live plots.
         '''
@@ -556,7 +556,7 @@ class XAFSScan():
         self.sample      = kwargs['sample']
         self.fluo_detector = kwargs['fluo_detector']
         self.reference_material = kwargs['reference_material']
-        
+
         ## close the plot from the last sequence
         if self.fig is not None:
             plt.close(self.fig.number)
@@ -581,7 +581,7 @@ class XAFSScan():
         self.xs7 = rkvs.get('BMM:user:xs7').decode('utf-8')
         self.xs8 = rkvs.get('BMM:user:xs8').decode('utf-8')
 
-            
+
         ## 2x2 grid if fluorescence
         if self.mode in ('fluorescence', 'dante'):
             if get_backend().lower() == 'agg':
@@ -610,7 +610,7 @@ class XAFSScan():
             self.ref = self.fig.add_subplot(self.gs[1, 0])
             self.iy  = self.fig.add_subplot(self.gs[1, 1])
             self.axis_list   = [self.mut, self.muf, self.i0, self.ref, self.iy]
-            
+
         ## 2x2 grid if pilatus or eiger
         elif self.mode in ('pilatus', 'eiger'):
             if get_backend().lower() == 'agg':
@@ -666,7 +666,7 @@ class XAFSScan():
             self.ref.set_ylabel('diffuse intensity')
             self.ref.set_xlabel('energy (eV)')
             self.ref.set_title('diffuse scattering')
-            
+
 
         ## yield needs the iy signal
         if self.mode == 'yield':
@@ -677,15 +677,15 @@ class XAFSScan():
             self.iy.set_ylabel('specular intensity')
             self.iy.set_xlabel('energy (eV)')
             self.iy.set_title('specular scattering')
-            
+
         ## common appearance
         for ax in self.axis_list:
             ax.grid(which='major', axis='both')
             ax.set_facecolor((0.95, 0.95, 0.95))
 
-        
 
-            
+
+
     def Next(self, **kwargs):
         '''Initialize data arrays and plotting lines for next scan.
         '''
@@ -710,7 +710,7 @@ class XAFSScan():
                 ax.legend(loc='best', shadow=True)
             else:
                 ax.legend.remove()
-            
+
     def stop(self, catalog, **kwargs):
         '''Done with a sequence of XAFS live plots.
         '''
@@ -747,7 +747,7 @@ class XAFSScan():
                 self.fig.savefig(fname)
                 self.logger.info(f'saved XAFS sequence figure {fname}')
                 img_to_slack(fname, title=self.sample, measurement='xafs')
-            
+
 
 
     def add(self, **kwargs):
@@ -768,7 +768,7 @@ class XAFSScan():
 
         if self.mode in ('transmission', 'fluorescence', 'yield', 'dante', 'reference'):
             self.refer.append(numpy.log(abs(kwargs['data']['It']/kwargs['data']['Ir'])))
-            
+
         if self.mode in ('pilatus', 'eiger'):  # re-purpose refer and iysig
             self.refer.append(kwargs['data']['diffuse']/kwargs['data']['I0'])
             self.iysig.append(kwargs['data']['specular']/kwargs['data']['I0'])
@@ -778,9 +778,9 @@ class XAFSScan():
             self.iysig.append(kwargs['data']['Iy']/kwargs['data']['I0'])
             self.line_iy.set_data(self.energy, self.iysig)
 
-        
+
         self.line_ref.set_data(self.energy, self.refer)
-        
+
 
         ## and do all that for the fluorescence spectrum if it is being plotted.
         if self.mode in ('fluorescence', 'yield', 'pilatus', 'eiger', 'dante'):
@@ -817,12 +817,12 @@ class XAFSScan():
             ax.relim()
             ax.autoscale_view(True,True,True)
         #self.fig.show()         # in case the user has closed the window
-        ## redraw and flush the canvas 
+        ## redraw and flush the canvas
         ## Tom's explanation for how to do multiple plots: https://stackoverflow.com/a/31686953
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
-        
-            
+
+
 
 class XRF():
     '''Manage the plotting of an XRF spectrum
@@ -854,14 +854,14 @@ class XRF():
     def __init__(self, *args, **kwargs):
         self.allrois = None
         self.reset_rois()
-        
+
     def reset_rois(self):
-        startup_dir = profile_configuration.get('services', 'startup')        
+        startup_dir = profile_configuration.get('services', 'startup')
         with open(os.path.join(startup_dir, 'rois.json'), 'r') as fl:
             js = fl.read()
         self.allrois = json.loads(js)
         print('Set ROI values')
-        
+
 
     def plot(self, catalog, **kwargs):
         uid      = None
@@ -889,7 +889,7 @@ class XRF():
                 self.title = catalog[uid].metadata['start']['XDI']['Sample']['name']
         self.axes.set_title(self.title)
         self.axes.grid(which='major', axis='both')
-        
+
         s = []
         nelem = 4
         channels = tuple(range(1, 5))
@@ -904,7 +904,7 @@ class XRF():
             nelem = 7
             channels = tuple(range(1, 8))
 
-            
+
         if nelem == 1:
             s.append(catalog[uid].primary.data['1-element SDD_channel08_xrf'][0])  #  note channel number!
             only = 1
@@ -973,7 +973,7 @@ class XRF():
                 self.logger.info(f'saved XRF figure {fname}')
                 if post is True:
                     img_to_slack(fname, title=self.title, measurement='xrf')
-            
+
 
 
 
@@ -1033,7 +1033,7 @@ class XRF():
             handle.write(f'# Column.{c+1}: MCA{c} counts\n')
             if nchan > 1:
                 column_list.append(f'MCA{c}')
-                
+
         handle.write('# //////////////////////////////////////////////////////////\n')
         if xdi is not None and "_comment" in xdi:
             for l in xdi["_comment"]:
@@ -1055,7 +1055,7 @@ class XRF():
             for i in range(1, nchan+1):
                 s.append(catalog[uid].primary.data[f'{nchan}-element SDD_channel0{i}_xrf'][0])
             datatable = numpy.vstack(s)
-                
+
         e=numpy.arange(0, len(s[0])) * 10
         ndt=numpy.vstack(datatable)
         b=pandas.DataFrame(ndt.transpose(), index=e, columns=column_list)
@@ -1064,7 +1064,7 @@ class XRF():
         handle.flush()
         handle.close()
         print('wrote XRF spectra to %s' % fname)
-                
+
 class AreaScan():
     '''Manage the live plot for a motor scan or a time scan.
     '''
@@ -1073,7 +1073,7 @@ class AreaScan():
     xdata       = []
     ydata       = []
     cdata       = []
-    count       = 0 
+    count       = 0
 
     detector    = None
     element     = 'H'
@@ -1091,13 +1091,13 @@ class AreaScan():
     slow_steps  = 3
     slow_stop   = 1
     slow_initial = 0
-    
+
     fast_motor  = None
     fast_start  = -1
     fast_steps  = 3
     fast_stop   = 1
     fast_initial = 0
-    
+
     def start(self, **kwargs):
         #if self.figure is not None:
         #    plt.close(self.figure.number)
@@ -1123,16 +1123,16 @@ class AreaScan():
         self.slow = self.slow_initial + numpy.linspace(self.slow_start, self.slow_stop, self.slow_steps)
         self.fast = self.fast_initial + numpy.linspace(self.fast_start, self.fast_stop, self.fast_steps)
 
-        
+
         self.detector     = kwargs['detector']
         self.cdata        = numpy.zeros(self.fast_steps * self.slow_steps)
         self.count        = 0
-        
+
         self.figure = plt.figure()
         if self.fast_motor is not None:
             cid = self.figure.canvas.mpl_connect('button_press_event', self.interpret_click)
-        
-        
+
+
         self.plots.append(self.figure.number)
         self.axes = self.figure.add_subplot(111)
         self.axes.set_facecolor((0.95, 0.95, 0.95))
@@ -1144,7 +1144,7 @@ class AreaScan():
         self.axes.set_ylabel(f'slow axis ({self.slow_motor}) position (mm)')
         self.axes.set_title(f'{self.detector}   Energy = {self.energy:.1f}')
 
-        
+
         self.xs1 = rkvs.get('BMM:user:xs1').decode('utf-8')
         self.xs2 = rkvs.get('BMM:user:xs2').decode('utf-8')
         self.xs3 = rkvs.get('BMM:user:xs3').decode('utf-8')
@@ -1164,7 +1164,7 @@ class AreaScan():
         rkvs.set('BMM:mouse_event:motor', ev.canvas.figure.axes[0].get_xlabel())
         rkvs.set('BMM:mouse_event:value2', y)
         rkvs.set('BMM:mouse_event:motor2', ev.canvas.figure.axes[0].get_ylabel())
-        
+
     def stop(self, catalog, **kwargs):
         if get_backend().lower() == 'agg':
             if 'filename' in kwargs and kwargs['filename'] is not None and kwargs['filename'] != '':
@@ -1190,7 +1190,7 @@ class AreaScan():
 
 
     def add(self, **kwargs):
-        
+
         if 'dcm_roll' in kwargs['data']:
             return              # this is a baseline event document, dcm_roll is almost never scanned
 
@@ -1208,7 +1208,7 @@ class AreaScan():
             signal  = kwargs['data'][f'{self.element}8'] / kwargs['data']['I0']
         elif self.detector == 'Xs':
             signal  = (kwargs['data'][f'{self.element}1']+kwargs['data'][f'{self.element}2']+kwargs['data'][f'{self.element}3']+kwargs['data'][f'{self.element}4']) / kwargs['data']['I0']
-            
+
         self.cdata[self.count] = signal
         self.axes.pcolormesh(self.fast, self.slow, self.cdata.reshape(self.slow_steps, self.fast_steps), cmap=plt.cm.viridis)
         self.im.set_clim(self.cdata.min(), self.cdata.max())

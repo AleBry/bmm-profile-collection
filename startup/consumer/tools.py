@@ -56,7 +56,7 @@ def experiment_folder(catalog, uid):
             cycle = facility_dict['xas-cycle']
         else:
             cycle = facility_dict['cycle']
-            
+
     if DATA_SECURITY:
         folder    = os.path.join('/nsls2', 'data3', 'bmm', 'proposals', cycle, f'{proposal}')
     else:
@@ -98,12 +98,12 @@ def echo_slack(text='', img=None, icon='message', rid=None, measurement='xafs'):
 
     with open(rawlogfile, 'r') as fd:
         allmessages = fd.read()
-        
+
     messagelog = os.path.join(base, 'dossier', 'messagelog.html')
     o = open(messagelog, 'w')
     o.write(''.join(content).format(text = allmessages, channel = 'BMM #beamtime'))
     o.close()
-        
+
 # this bit of html+css is derived from https://www.w3schools.com/howto/howto_css_chat.asp
 def message_div(text='', img=None, icon='message', rid=None, measurement='xafs'):
     if measurement == 'raster':
@@ -112,7 +112,7 @@ def message_div(text='', img=None, icon='message', rid=None, measurement='xafs')
         folder = 'XRF'
     else:
         folder = 'snapshots'
-        
+
     if icon == 'message':
         avatar = 'message.png'
         image  = ''
@@ -127,7 +127,7 @@ def message_div(text='', img=None, icon='message', rid=None, measurement='xafs')
         words  = f'<span class="figuretitle">{text}</span>'
     else:
         return
-    
+
     thisrid, clss, style = '', 'left', ''
     if rid is None:
         avatar = 'blank.png'
@@ -138,7 +138,7 @@ def message_div(text='', img=None, icon='message', rid=None, measurement='xafs')
         thisrid = f' id="{rid}"'
         clss = 'top'
         style = ' style="border-top: 1px solid #000;"'
-        
+
     this = f'''    <div class="container"{thisrid}{style}>
       <div class="left"><img src="{avatar}" style="width:30px;" /></div>
       <span class="time-right">{datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")}</span>
@@ -146,7 +146,7 @@ def message_div(text='', img=None, icon='message', rid=None, measurement='xafs')
     </div>
 '''
     return this
-        
+
 
 
 
@@ -166,7 +166,7 @@ def next_index(folder, stub):
 
 def file_exists(folder, filename, start, stop, number):
     '''Return true is a file of the supplied name exists in the supplied folder.'''
-    target = os.path.join(folder, filename) 
+    target = os.path.join(folder, filename)
     found, text = False, []
     if number is True:
         for i in range(start, stop+1, 1):
@@ -179,7 +179,7 @@ def file_exists(folder, filename, start, stop, number):
         if os.path.isfile(target):
             found = True
             text.append(filename)
-        
+
 
     if found is True:
         rkvs.set('BMM:file_exists', 'true')
@@ -187,7 +187,7 @@ def file_exists(folder, filename, start, stop, number):
     else:
         rkvs.set('BMM:file_exists', 'false')
         print(f'"{filename}" not found in {folder} in range {start} - {stop}.')
-            
+
 
 from scipy.ndimage import center_of_mass
 def com(signal):
@@ -199,13 +199,13 @@ def peak(signal):
     center of rocking curve and slit height scans.'''
     return numpy.argmax(signal)
 
-        
+
 def peakfit(catalog=None, uid=None, motor=None, signal='I0', choice='peak', spinner=None, ga=None):
 
     if uid == 'last':
-        uid = catalog[-1].metadata['start']['uid'] 
+        uid = catalog[-1].metadata['start']['uid']
         print(f'last UID was {uid}')
-    
+
     top = 0
     t  = catalog[uid].primary['data']
 
@@ -307,7 +307,7 @@ def peakfit(catalog=None, uid=None, motor=None, signal='I0', choice='peak', spin
             ga.complete       = True
 
 def rectanglefit(catalog=None, uid=None, motor=None, signal='It', drop=None, aw=None):
-    
+
     top = 0
     t  = catalog[uid].primary['data']
     positions = numpy.array(t[motor])
@@ -320,11 +320,11 @@ def rectanglefit(catalog=None, uid=None, motor=None, signal='It', drop=None, aw=
         sig = numpy.array(t[signal]) / numpy.array(t['It'])
     else:
         sig = numpy.array(t[signal])
-        
+
     if drop is not None:
         positions = positions[:-drop]
         sig = sig[:-drop]
-        
+
     #if float(sig[2]) > list(sig)[-2] :
     #    ss       = -(sig - sig[2])
     #else:
@@ -339,7 +339,7 @@ def rectanglefit(catalog=None, uid=None, motor=None, signal='It', drop=None, aw=
     amplitude = abs(out.params['amplitude'].value)
     rkvs.set('BMM:peak_position', target)
     print(f'*** midpoint of rectangle scan found at {motor} position {target:.3f}')
-    
+
     if get_backend().lower() != 'agg':
         fig = plt.figure()
         ax = fig.gca()
@@ -352,7 +352,7 @@ def rectanglefit(catalog=None, uid=None, motor=None, signal='It', drop=None, aw=
         ax.set_title(f'fit to {motor} scan, center={out.params["midpoint"].value:.3f}')
         fig.canvas.manager.show()
         fig.canvas.flush_events()
-    
+
     if aw is not None and aw.ongoing is True:  # i.e. if currently doing a find_slot()
         direction =  motor.split('_')[1]
         if direction == 'x':
@@ -369,13 +369,13 @@ def rectanglefit(catalog=None, uid=None, motor=None, signal='It', drop=None, aw=
             aw.y_center = target
             aw.y_amplitude = amplitude
             aw.y_detector = signal.lower()
-            
+
 def stepfit(catalog=None, uid=None, motor=None, signal='It', spinner=None, ga=None):
 
     if uid == 'last':
-        uid = catalog[-1].metadata['start']['uid'] 
+        uid = catalog[-1].metadata['start']['uid']
         print(f'last UID was {uid}')
-        
+
     target = 0
     t  = catalog[uid].primary['data']
     positions = numpy.array(t[motor])
@@ -387,7 +387,7 @@ def stepfit(catalog=None, uid=None, motor=None, signal='It', spinner=None, ga=No
         sig = numpy.array(t[signal]) / numpy.array(t['It'])
     else:
         sig = numpy.array(t[signal])
-        
+
     if float(sig[2]) > list(sig)[-2] :
         ss     = -(sig - sig[2])
         inverted = 'inverted '
@@ -418,9 +418,9 @@ def stepfit(catalog=None, uid=None, motor=None, signal='It', spinner=None, ga=No
         else:
             ax.set_title(f'fit to {motor} scan, center={target:.3f}')
         fig.canvas.manager.show()
-        fig.canvas.flush_events() 
+        fig.canvas.flush_events()
         #out.plot()
-        
+
     ## gather the information needed for the glancing angle auto-alignment summary plot
     if ga is not None and ga.ongoing is True:  # i.e. if currently doing a ga auto-alignment
         rkvs.set('BMM:ga:xy_uid', uid)

@@ -30,7 +30,7 @@ def tabbed_plot(pw=None, uid=None, element=None, edge=None, folder=None, mode='t
     pw.addPlot('signals',   this.plot_signals())
     pw.addPlot('chi(k)',    this.plot_chi())
     pw.addPlot('chi(R)',    this.plot_chir(win=False))
-    
+
     pw.show()
 
 
@@ -66,7 +66,7 @@ def unit_reference(ax, this):
     ax.set_xlabel('energy (eV)')
     ax.grid(which='major', axis='both')
     ax.legend(loc='best', shadow=True)
-    
+
 
 def unit_chik(ax, this, kw):
     g = this.group
@@ -86,8 +86,8 @@ def unit_chir(ax, this, kw):
     ax.plot(g.r, g.chir_mag, label=r'$|\chi(R)|$')
     ax.legend(loc='best', shadow=True)
     ax.set_xlim(right=7)
-    
-    
+
+
 def gridded_plot(uid=None, element=None, edge=None, folder=None, mode='transmission', catalog=None):
     '''
     Make a plot of an XAFS scan that looks like this:
@@ -121,7 +121,7 @@ def gridded_plot(uid=None, element=None, edge=None, folder=None, mode='transmiss
     g = this.group
 
     plt.close('XAFS grid')
-    
+
     fig = plt.figure(num='XAFS grid', tight_layout=True)
     fig.canvas.manager.window.setGeometry(1877, 378, 1200, 1062)
     fig.suptitle(this.name)
@@ -148,4 +148,3 @@ def gridded_plot(uid=None, element=None, edge=None, folder=None, mode='transmiss
     #plt.show()
     fig.canvas.manager.window.raise_()
     fig.canvas.flush_events()
-    
