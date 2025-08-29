@@ -78,7 +78,7 @@ def pobj(text, style='monokai'):
     print(highlight(pprint.pformat(dossier.__dict__),
                     PythonLexer(),
                     Terminal256Formatter(style=style)))
-    
+
 
 def usb_filename(self, bmm_catalog, uid):
     '''Find the path/name of the asset file associated with UID
@@ -89,11 +89,11 @@ def usb_filename(self, bmm_catalog, uid):
             if '_%d' in this:
                 this = this % 0
             if 'xspress3' in this:
-                return this 
+                return this
     return None
 
-    
-    
+
+
 def manage_files_from_kafka_messages(beamline_acronym):
 
     def examine_message(consumer, doctype, doc):
@@ -132,7 +132,7 @@ def manage_files_from_kafka_messages(beamline_acronym):
                 elif message['dossier'] == 'show':
                     #logger.info(pprint.pformat(dossier.__dict__))
                     pobj(dossier)
-                    
+
                 elif message['dossier'] == 'motors':
                     try:
                         print(highlight(dossier.motor_sidebar(bmm_catalog),
@@ -164,7 +164,7 @@ def manage_files_from_kafka_messages(beamline_acronym):
                     logger.info(message['text'])
 
 
-                    
+
             elif 'echoslack' in message:
                 if 'img' not in message or message['img'] is None:
                     print(f'sending message "{message["text"]}" to slack')
@@ -180,10 +180,10 @@ def manage_files_from_kafka_messages(beamline_acronym):
 
             elif 'refresh_slack' in message:
                 refresh_slack()
-                    
+
             elif 'describe_slack' in message:
                 describe_slack()
-                    
+
             elif 'mkdir' in message:
                 if os.path.exists(message['mkdir']) is False:
                     os.makedirs(message['mkdir'])
@@ -199,7 +199,7 @@ def manage_files_from_kafka_messages(beamline_acronym):
                     for d in docs:
                         if d[0] == 'resource':
                             this = os.path.join(d[1]['root'], d[1]['resource_path'])
-                            if '_%d' in this or re.search('%\d\.\dd', this) is not None:
+                            if '_%d' in this or re.search(r'%\d\.\dd', this) is not None:
                                 this = this % 0
                             found.append(this)
                     source = found[0]
@@ -208,13 +208,13 @@ def manage_files_from_kafka_messages(beamline_acronym):
                 shutil.copy(source, target)
                 logger.info(f'copied {source} to {target}')
 
-                
+
             elif 'touch' in message:
                 target = message['touch']
                 this = open(target, 'a')
                 this.close()
                 logger.info(f'touched {target}')
-                
+
             elif 'xasxdi' in message:
                 if 'include_yield' in message:
                     include_yield = True
@@ -224,16 +224,16 @@ def manage_files_from_kafka_messages(beamline_acronym):
 
             elif 'everyxas' in message:
                 xdi.everyxas(catalog=bmm_catalog, gup=message['gup'], since=message['since'], until=message['until'], logger=logger)
-                    
+
             elif 'seadxdi' in message:
                 sead.to_xdi(catalog=bmm_catalog, uid=message['uid'], filename=message['filename'], logger=logger)
-                
+
             elif 'lsxdi' in message:
                 ls.to_xdi(catalog=bmm_catalog, uid=message['uid'], filename=message['filename'], logger=logger)
 
             elif 'raster' in message:
                 raster.preserve_data(catalog=bmm_catalog, uid=message['uid'], logger=logger)
-                
+
             elif 'next_index' in message:
                 next_index(message['folder'], message['stub'])
 
@@ -242,7 +242,6 @@ def manage_files_from_kafka_messages(beamline_acronym):
                 file_exists(message['folder'], message['filename'], message['start'], message['stop'], message['number'])
 
 
-                
     kafka_config = nslsii.kafka_utils._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")
 
     # this consumer should not be in a group with other consumers
@@ -265,4 +264,3 @@ def manage_files_from_kafka_messages(beamline_acronym):
 
 print('Ready to receive documents...')
 manage_files_from_kafka_messages('bmm')
-        

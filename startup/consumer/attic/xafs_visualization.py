@@ -8,7 +8,7 @@ from BMM.larch_interface import Pandrosus, Kekropidai #, plt
 plt.rcParams["figure.titlesize"] = 'x-large'
 
 def tabbed_plot(pw=None, uid=None, element=None, edge=None, folder=None, mode='transmission', catalog=None):
-    '''Tabbed plots using https://github.com/superjax/plotWindow
+    r'''Tabbed plots using https://github.com/superjax/plotWindow
 
     This is exactly what I want, but seems to re-introduce threads confusion ... ¯\_(ツ)_/¯
     '''
@@ -30,14 +30,14 @@ def tabbed_plot(pw=None, uid=None, element=None, edge=None, folder=None, mode='t
     pw.addPlot('signals',   this.plot_signals())
     pw.addPlot('chi(k)',    this.plot_chi())
     pw.addPlot('chi(R)',    this.plot_chir(win=False))
-    
+
     pw.show()
 
 
 def unit_mue(ax, this):
     g = this.group
-    ax.plot(g.energy, g.mu, label='$\mu(E)$', color='C0')
-    ax.set_ylabel('$\mu(E)$')
+    ax.plot(g.energy, g.mu, label=r'$\mu(E)$', color='C0')
+    ax.set_ylabel(r'$\mu(E)$')
     ax.set_xlabel('energy (eV)')
     ax.grid(which='major', axis='both')
     ax.legend(loc='best', shadow=True)
@@ -50,28 +50,28 @@ def unit_signals(ax, this):
     ax.plot(g.energy, g.mu, label='$\mu(E)$')
     ax.plot(g.energy, g.i0*max_xmu/max_i0, label='$I_0$')
     ax.plot(g.energy, this.signal*max_xmu/max_signal, label='signal')
-    ax.set_ylabel('$\mu(E)$')
+    ax.set_ylabel(r'$\mu(E)$')
     ax.set_xlabel('energy (eV)')
     ax.grid(which='major', axis='both')
     ax.legend(loc='best', shadow=True)
 
 def unit_reference(ax, this):
     g = this.group
-    ax.plot(g.energy, g.flat, label='norm. $\mu(E)$')
+    ax.plot(g.energy, g.flat, label=r'norm. $\mu(E)$')
     b=Pandrosus()
     b.put(g.energy, g.reference, 'reference')
     b.prep()
     ax.plot(b.group.energy, b.group.flat, label='reference')
-    ax.set_ylabel('normalized $\mu(E)$')
+    ax.set_ylabel(r'normalized $\mu(E)$')
     ax.set_xlabel('energy (eV)')
     ax.grid(which='major', axis='both')
     ax.legend(loc='best', shadow=True)
-    
+
 
 def unit_chik(ax, this, kw):
     g = this.group
     ax.set_xlabel(this.xk)
-    ax.set_ylabel(f"$k^{kw}\cdot\chi(k)$  ($\AA^{{-{kw}}}$)")
+    ax.set_ylabel(rf"$k^{kw}\cdot\chi(k)$  ($\AA^{{-{kw}}}$)")
     ax.grid(which='major', axis='both')
     y = g.chi*g.k**kw
     ax.plot(g.k, y, label='$\chi(k)$')
@@ -81,13 +81,13 @@ def unit_chik(ax, this, kw):
 def unit_chir(ax, this, kw):
     g = this.group
     ax.set_xlabel(this.xr)
-    ax.set_ylabel(f"$|\chi(R)|$  ($\AA^{{-{kw+1}}}$)")
+    ax.set_ylabel(rf"$|\chi(R)|$  ($\AA^{{-{kw+1}}}$)")
     ax.grid(which='major', axis='both')
-    ax.plot(g.r, g.chir_mag, label='$|\chi(R)|$')
+    ax.plot(g.r, g.chir_mag, label=r'$|\chi(R)|$')
     ax.legend(loc='best', shadow=True)
     ax.set_xlim(right=7)
-    
-    
+
+
 def gridded_plot(uid=None, element=None, edge=None, folder=None, mode='transmission', catalog=None):
     '''
     Make a plot of an XAFS scan that looks like this:
@@ -121,7 +121,7 @@ def gridded_plot(uid=None, element=None, edge=None, folder=None, mode='transmiss
     g = this.group
 
     plt.close('XAFS grid')
-    
+
     fig = plt.figure(num='XAFS grid', tight_layout=True)
     fig.canvas.manager.window.setGeometry(1877, 378, 1200, 1062)
     fig.suptitle(this.name)
@@ -148,4 +148,3 @@ def gridded_plot(uid=None, element=None, edge=None, folder=None, mode='transmiss
     #plt.show()
     fig.canvas.manager.window.raise_()
     fig.canvas.flush_events()
-    

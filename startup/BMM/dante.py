@@ -1,4 +1,4 @@
-    
+
 from pathlib import PurePath
 from collections import deque, OrderedDict
 import time as ttime
@@ -34,8 +34,8 @@ from BMM.periodictable import Z_number, edge_number
 # | |/ /| | | || |\  | | | | |___   \ V  V / /  | | | | |/ /| |   /\__/ / #
 # |___/ \_| |_/\_| \_/ \_/ \____/    \_/\_/_/   \_| |_/___/ \_|   \____/  #
 ###########################################################################
-                                                                       
-                                                                       
+
+
 #from BMM.pilatus import BMMFileStoreHDF5, BMMHDF5Plugin
 
 class BMMDanteFileStoreHDF5(FileStorePluginBase):
@@ -72,15 +72,15 @@ class BMMDanteFileStoreHDF5(FileStorePluginBase):
             "frame_per_point": self.get_frames_per_point(),
         }
         self._generate_resource(resource_kwargs)
-    
+
 class BMMDanteHDF5Plugin(HDF5Plugin_V33, BMMDanteFileStoreHDF5, FileStoreIterativeWrite):
-    
+
 
     def _update_paths(self):
         self.reg_root = self.root_path_str
         self._write_path_template = self.root_path_str  + self.path_template_str
         self._read_path_template = self.root_path_str + self.path_template_str
-    
+
     @property
     def root_path_str(self):
         root_path = f"/nsls2/data3/bmm/proposals/{md['cycle']}/{md['data_session']}/assets/dante-1/"
@@ -108,7 +108,7 @@ class BMMDanteHDF5Plugin(HDF5Plugin_V33, BMMDanteFileStoreHDF5, FileStoreIterati
         This has been slightly modified by Bruce to avoid a situation where the warmup
         hangs.  Also to add some indication on screen for what is happening.
         """
-        whisper("                        warming up the Dante hdf5 plugin..."), flush=True
+        whisper("                        warming up the Dante hdf5 plugin...") #, flush=True
         self.enable.set(1).wait()
 
         # JOSH: proposed changes for new IOC
@@ -132,7 +132,7 @@ class BMMDanteHDF5Plugin(HDF5Plugin_V33, BMMDanteFileStoreHDF5, FileStoreIterati
             ttime.sleep(0.1)  # abundance of caution
 
         self.parent.cam.acquire.set(1).wait()
-        
+
         # JOSH: do we need more than 2 seconds here?
         #       adding more time here helps!
         for i in tqdm(range(4), colour='#7f8c8d'):
@@ -221,7 +221,7 @@ class DanteCamBase(ADBase):
     min_x = ADCpt(SignalWithRBV, "MinX")
     min_y = ADCpt(SignalWithRBV, "MinY")
     model = ADCpt(EpicsSignalRO, "Model_RBV")
-    
+
 
     num_exposures = ADCpt(SignalWithRBV, "NumExposures")
     num_exposures_counter = ADCpt(EpicsSignalRO, "NumExposuresCounter_RBV")
@@ -273,8 +273,8 @@ class DanteChannel():
     def set_roi(self, start, width):
         self.energy_start.put(start)
         self.energy_width.put(width)
-        
-    
+
+
 class BMMDante(DetectorBase):
     #image = Cpt(ImagePlugin, "image1:")
     cam = Cpt(DanteCamBase, "dante:")
@@ -282,7 +282,7 @@ class BMMDante(DetectorBase):
     acquire_time = ADCpt(EpicsSignal, "dante:PresetReal")
     acquire = ADCpt(EpicsSignal, "dante:EraseStart")
 
-    
+
     mca1 = ADCpt(EpicsSignal, "mca1")
     mca2 = ADCpt(EpicsSignal, "mca2")
     mca3 = ADCpt(EpicsSignal, "mca3")
@@ -291,7 +291,7 @@ class BMMDante(DetectorBase):
     mca6 = ADCpt(EpicsSignal, "mca6")
     mca7 = ADCpt(EpicsSignal, "mca7")
     #mca8 = ADCpt(EpicsSignal, "mca8")
-    
+
     hdf5 = Cpt(
         BMMDanteHDF5Plugin,
         "HDF1:",
@@ -308,9 +308,9 @@ class BMMDante(DetectorBase):
     roi6 = Cpt(EpicsSignalRO, "ROIStat1:6:Total_RBV")
     roi7 = Cpt(EpicsSignalRO, "ROIStat1:7:Total_RBV")
     #roi8 = Cpt(EpicsSignalRO, "ROIStat1:8:Total_RBV")
-        
+
     nchannels = 8
-    
+
     def make_data_key(self):
         source = "PV:{}".format(self.prefix)
         # This shape is expected to match arr.shape for the array.
@@ -319,7 +319,7 @@ class BMMDante(DetectorBase):
             8,
             1024 * pow(2, self.cam.num_mca_channels.get()),
         )
-        
+
         data_key = dict(
             shape=shape,
             source=source,
@@ -342,13 +342,13 @@ class BMMDante(DetectorBase):
         #self.table()
         if doplot:
             self.plot(add=True, uid=uid)
-        
-        
-    def plot(self, uid=None, add=False, only=None): 
+
+
+    def plot(self, uid=None, add=False, only=None):
         '''Make a plot appropriate for the N-element detector.
 
         The default is to sum the four channels.
-        
+
         Parameters
         ----------
         uid : str
@@ -357,7 +357,7 @@ class BMMDante(DetectorBase):
             If True, plot the sum of the four channels
         only : int
             plot only the signal from a specific channel -- (1) / (1-4) / (1-7)
-        
+
         '''
         if uid is not None:
             kafka_message({'xrf': 'plot', 'uid': uid, 'add': add, 'only': only})
@@ -376,7 +376,7 @@ class BMMDante(DetectorBase):
             e = numpy.arange(0, len(self.mca1.get())) * 10
             plt.ion()
             plt.plot(e, self.mca1.get(), label=f'channel 1')
-                     
+
             # if only is not None and only in range(1, len(list(self.iterate_channels()))+1):
             #     channel = self.get_channel(channel_number=only)
             #     this = channel.mca.array_data
@@ -403,12 +403,12 @@ class BMMDante(DetectorBase):
             plt.legend()
             #plt.show()
 
-        
-            
+
+
 from BMM.user_ns.base import profile_configuration
 import redis
 
-    
+
 class BMMDanteSingleTrigger(SingleTriggerV33, BMMDante):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
