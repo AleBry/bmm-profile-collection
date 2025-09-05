@@ -46,7 +46,7 @@ aw.logger = logger
 be_verbose = True
 doing = None
 
-from bmm_live import LineScan, XAFSScan, XRF, AreaScan
+from bmm_live import LineScan, XAFSScan, XRF, AreaScan, XRR
 ls  = LineScan()
 ls.logger = logger
 xs  = XAFSScan()
@@ -57,6 +57,9 @@ xrf = XRF()
 xrf.logger = logger
 asc = AreaScan()
 asc.logger = logger
+
+xrr = XRR()
+xrr.logger = logger
 
 from tools import peakfit, rectanglefit, stepfit
 
@@ -91,7 +94,7 @@ def plot_from_kafka_messages(beamline_acronym):
             if any(x in message for x in ('xafs_sequence', 'glancing_angle', 'align_wheel', 'wafer', 'mono_calibration',
                                           'xrfat', 'linescan', 'xafsscan', 'timescan', 'xrf', 'areascan', 'close', 'logger', 'refresh_slack',
                                           'peakfit', 'stepfit', 'rectanglefit', 'reset_rois',
-                                          'backend')) :
+                                          'backend', 'xrr')) :
                 if be_verbose is True:
                     print(f'\n[{datetime.datetime.now().isoformat(timespec="seconds")}]\n{pprint.pformat(message, compact=True)}')
                 else:
@@ -183,7 +186,16 @@ def plot_from_kafka_messages(beamline_acronym):
                     xrf.plot(catalog=bmm_catalog, **message)
                 elif message['xrf'] == 'write':
                     xrf.to_xdi(catalog=bmm_catalog, uid=message['uid'], filename=message['filename'])
+                    
+            elif 'xrr' in message:
+                if message['xrr'] == 'start':
+                    xrr.start(**message)
+                    doing = 'xrr'
+                elif message['xrr'] == 'stop':
+                    xrr.stop(catalog=bmm_catalog, **message)
+                    doing = None
 
+                    
             elif 'reset_rois' in message:
                 xrf.reset_rois()
                 
@@ -289,6 +301,9 @@ def plot_from_kafka_messages(beamline_acronym):
             elif doing == 'areascan':
                 #pprint.pprint(message)
                 asc.add(**message)
+            elif doing == 'xrr':
+                #pprint.pprint(message)
+                xrr.add(**message)
             else:
                 pass
                 

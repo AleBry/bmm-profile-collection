@@ -45,11 +45,14 @@ from pygments.lexers import PythonLexer, HtmlLexer
 from pygments.formatters import Terminal256Formatter
 
 from dossier_kafka import BMMDossier, startup_dir, XASFile, SEADFile, LSFile, RasterFiles
+from gonio import XRRFile
+
 dossier = BMMDossier()
 xdi  = XASFile()
 sead = SEADFile()
 ls   = LSFile()
 raster = RasterFiles()
+xrr = XRRFile()
 
 # capture Ctrl-c to exit kafka polling loop semi-gracefully
 def handler(signal, frame):
@@ -241,6 +244,16 @@ def manage_files_from_kafka_messages(beamline_acronym):
                 #pprint.pprint(message)
                 file_exists(message['folder'], message['filename'], message['start'], message['stop'], message['number'])
 
+
+            elif 'xrrout' in message:
+                xrr.to_xdi(catalog=bmm_catalog, uid=message['uid'], stub=message['stub'], logger=logger)
+                xrr.to_txt(catalog=bmm_catalog, uid=message['uid'], stub=message['stub'], style='both', logger=logger)
+
+            elif 'xrrxdi' in message:
+                xrr.to_xdi(catalog=bmm_catalog, uid=message['uid'], stub=message['stub'], logger=logger)
+
+            elif 'xrrtxt' in message:
+                xrr.to_txt(catalog=bmm_catalog, uid=message['uid'], stub=message['stub'], style=message['style'], logger=logger)
 
                 
     kafka_config = nslsii.kafka_utils._read_bluesky_kafka_config_file(config_file_path="/etc/bluesky/kafka.yml")

@@ -1,4 +1,4 @@
-import os, sys, re, socket, ast, datetime, pathlib, uuid
+import os, sys, re, socket, json, datetime, pathlib, uuid
 from urllib.parse import quote
 import numpy, pandas, openpyxl
 from scipy.io import savemat
@@ -32,7 +32,7 @@ try:
     rkvs = redis.Redis(host=redis_host, port=6379, db=0)
 except:
     rkvs = NoRedis()
-all_references = ast.literal_eval(rkvs.get('BMM:reference:mapping').decode('UTF8'))
+all_references = json.loads(rkvs.get('BMM:reference:mapping').decode('UTF8'))
 
 
 startup_dir = profile_configuration.get('services', 'startup')

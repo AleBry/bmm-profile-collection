@@ -214,6 +214,13 @@ class LineScan():
             self.axes.set_ylabel(f'Ita/{self.denominator}')
             self.axes.legend(loc='best', shadow=True)
 
+        elif self.numerator == 'Mythen':
+            self.numerator = 'Mythen'
+            self.description = 'reflectivity'
+            self.denominator = None
+            self.axes.set_ylabel(f'{self.numerator}')
+            
+
         elif self.stack is False and self.numerator in self.fluorescence_like:
             self.description = 'fluorescence (SDD)'
             self.denominator = 'I0'
@@ -347,6 +354,9 @@ class LineScan():
         if 'dcm_roll' in kwargs['data']:
             return              # this is a baseline event document, dcm_roll is almost never scanned
 
+        if 'wheel1' in kwargs['data']:
+            return              # this is a baseline event document, wheel1 is not an actual gonio motor
+
         
         if self.numerator in self.fluorescence_like:
             if self.fluo_detector == '1-element SDD':
@@ -396,6 +406,8 @@ class LineScan():
     
         elif self.numerator in kwargs['data']:  # numerator will not be in baseline document
             signal = kwargs['data'][self.numerator]
+        elif self.numerator == 'Mythen':
+            signal = kwargs['data']['mca_full']
         else:
             print(f'could not determine signal, self.numerator is {self.numerator}')
             return
@@ -1213,3 +1225,123 @@ class AreaScan():
         self.axes.pcolormesh(self.fast, self.slow, self.cdata.reshape(self.slow_steps, self.fast_steps), cmap=plt.cm.viridis)
         self.im.set_clim(self.cdata.min(), self.cdata.max())
         self.count += 1
+
+
+
+class XRR():
+    '''Manage an XRR scan.
+
+    This is two panel plot. 
+
+    Left: Mythen vs. eta -- a sequence of curvy stripes plotted on
+    linear scale that reset whenever attenuation or integration time
+    changes
+
+    Right: XRR vs. eta -- plotted on log scale, essentially the
+    reduced data
+    
+    '''
+    ongoing = False
+    xdata = []
+    rawdata = []
+    xrrdata = []
+    motor = 'eta'
+    detatcor = 'mythen'
+    title = 'eta/delta v. Mythen'
+
+    # binary                0  1        2                  3                                         4
+    # level                 0  1        2        3         4         5         6         7*          8
+    measured_attenuation = [1, 6.85865, 47.0088, 318.6107, 2225.346, 15046.19, 97500.05, 668718.718, ]
+
+    def start(self, **kwargs):
+        #if self.figure is not None:
+        #    plt.close(self.figure.number)
+        self.ongoing = True
+        self.xdata = []
+        self.rawdata = []
+        self.xrrdata = []
+        print(kwargs)
+        if 'motor'    in kwargs: self.motor    = kwargs['motor']
+        if 'detector' in kwargs: self.detector = kwargs['detector']
+        if 'title'    in kwargs: self.title    = kwargs['title']
+
+        self.figure = plt.figure()
+
+        if get_backend().lower() == 'agg':
+            self.figure.set_figheight(9.5)
+            self.figure.set_figwidth(15)
+        else:
+            self.figure.canvas.manager.window.setGeometry(1800, 2274, 1600, 545)
+        self.gs = gridspec.GridSpec(1,2)
+        self.raw = self.figure.add_subplot(self.gs[0, 0])
+        self.xrr = self.figure.add_subplot(self.gs[0, 1])
+        self.axis_list   = [self.raw, self.xrr]
+
+        self.figure.suptitle(f'XRR: {self.title}')
+
+
+        self.raw.grid(which='major', axis='both')
+        self.raw.set_facecolor((0.95, 0.95, 0.95))
+        self.raw.set_ylabel('Mythen')
+        self.raw.set_xlabel(self.motor)
+
+        self.xrr.grid(which='major', axis='both')
+        self.xrr.set_facecolor((0.95, 0.95, 0.95))
+        self.xrr.set_ylabel('XRR')
+        self.xrr.set_yscale('log')
+        self.xrr.set_xlabel(self.motor)
+
+        self.lineraw, = self.raw.plot([],[], 'o', label='raw Mythen data', markersize=3)
+        self.linexrr, = self.xrr.plot([],[], label='')
+        
+    
+
+    def stop(self, catalog, **kwargs):
+        if get_backend().lower() == 'agg':
+            if 'filename' in kwargs and kwargs['filename'] is not None and kwargs['filename'] != '':
+                folder = os.path.join(experiment_folder(catalog, kwargs["uid"]), 'pictures')
+                if os.path.isdir(folder) is False:
+                    os.mkdir(folder)
+                fname = os.path.join(folder, kwargs["filename"])
+                self.figure.savefig(fname)
+                self.logger.info(f'saved XRR figure {fname}')
+                #img_to_slack(fname, title=f'XRR: {self.title}', measurement='XRR')
+
+        self.ongoing  = False
+        self.xdata    = []
+        self.rawdata  = []
+        self.xrrdata  = []
+        self.motor    = 'eta'
+        self.detector = 'mythen'
+        self.title    = 'eta/delta v. Mythen'
+        self.figure   = None
+        self.axes     = None
+        self.lineraw  = None
+        self.linexrr  = None
+        
+    def add(self, **kwargs):
+
+        if 'wheel1' in kwargs['data']:
+            return              # this is a baseline event document, wheel1 is not part of an XRR scan
+
+        self.xdata.append(kwargs['data'][self.motor])
+        
+        self.rawdata.append(kwargs['data']['mca_full'])
+
+        i = int(kwargs['data']['attenuator_attenuation'])
+        factor = self.measured_attenuation[i]
+        rando = 5000 * numpy.random.rand()
+        self.xrrdata.append(rando + factor * kwargs['data']['mca_full'] / kwargs['data']['dwti_dwell_time'])
+        
+        self.lineraw.set_data(self.xdata, self.rawdata)
+        self.linexrr.set_data(self.xdata, self.xrrdata)
+
+        self.raw.relim()
+        self.raw.autoscale_view(True,True,True)
+        self.xrr.relim()
+        self.xrr.autoscale_view(True,True,True)
+        
+        #self.figure.show()      # in case the user has closed the window
+        self.figure.canvas.draw()
+        self.figure.canvas.flush_events()
+        

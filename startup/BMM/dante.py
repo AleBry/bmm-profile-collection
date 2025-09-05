@@ -108,7 +108,7 @@ class BMMDanteHDF5Plugin(HDF5Plugin_V33, BMMDanteFileStoreHDF5, FileStoreIterati
         This has been slightly modified by Bruce to avoid a situation where the warmup
         hangs.  Also to add some indication on screen for what is happening.
         """
-        whisper("                        warming up the Dante hdf5 plugin..."), flush=True
+        print("                        warming up the Dante hdf5 plugin...", flush=True)
         self.enable.set(1).wait()
 
         # JOSH: proposed changes for new IOC
@@ -253,6 +253,8 @@ class DanteCamBase(ADBase):
     temperature_actual = ADCpt(EpicsSignal, "TemperatureActual")
     time_remaining = ADCpt(EpicsSignalRO, "TimeRemaining_RBV")
     #trigger_mode = ADCpt(SignalWithRBV, "TriggerMode")
+
+    keep_alive = ADCpt(EpicsSignal, "KeepAlive")
 
 
     def __init__(self, *args, **kwargs):
