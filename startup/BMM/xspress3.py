@@ -494,7 +494,7 @@ class BMMXspress3DetectorBase(Xspress3Trigger, Xspress3Detector):
         print('\n     El   hinting                low    high')
         print('==============================================')
         for i,x in enumerate(list(first_channel.iterate_mcarois())):
-            name = re.sub('\d', '', x.name)
+            name = re.sub(r'\d', '', x.name)
             print(f" {i+1:>2d}  {name:<4s}  {x.kind.name:<20s}  {10*x.min_x.get():>5d}  {10*(x.min_x.get()+x.size_x.get()):>5d}")
     list_rois = roi_details
                 

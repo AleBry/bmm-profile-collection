@@ -13,14 +13,14 @@ triangle = u'\u227b' # 5BA'
 
 
 #heartbeat = '⣷⣯⣟⡿⢿⣻⣽⣾' # '<^>v'  # '.o0o' # '-\|/'
-heartbeat = '-\|/'
+heartbeat = r'-\|/'
 # heartbeat = ['|.    |',
 #              '| o   |',
-#              '|  0  |', 
-#              '|   o |', 
-#              '|    .|', 
-#              '|   o |', 
-#              '|  0  |', 
+#              '|  0  |',
+#              '|   o |',
+#              '|    .|',
+#              '|   o |',
+#              '|  0  |',
 #              '| o   |',
 #              ]
 # heartbeat = ['|▁            |',
@@ -137,7 +137,7 @@ def ln2_string(ln2):
         return colored('LN', 'blue', attrs=['bold'])
     else:
         return colored('LN', 'white', attrs=['dark'])
-    
+
 def determine_reference(sample):
     mapping = json.loads(rkvs.get('BMM:reference:mapping').decode('utf-8'))
     slot  = round((sample['ref'].RBV) / (-15)) % 24 + 1
@@ -165,4 +165,3 @@ def remaining():
     minutes = int(rem/60.)
     seconds = round(rem - minutes*60)
     return f'({minutes} min, {seconds} sec)'
-

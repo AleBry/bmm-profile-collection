@@ -131,8 +131,8 @@ class Pandrosus():
         self.bft     = {'window':'Hanning', 'rmin':1, 'rmax':3, 'dr':0.1,}
         ## plotting parameters
         self.xe      = 'energy (eV)'
-        self.xk      = 'wavenumber ($\AA^{-1}$)'
-        self.xr      = 'radial distance ($\AA$)'
+        self.xk      = r'wavenumber ($\AA^{-1}$)'
+        self.xr      = r'radial distance ($\AA$)'
         self.rmax    = 6
 
         ## some parameters to make this usable in bsui and not in bsui
@@ -456,22 +456,22 @@ class Pandrosus():
         g = self.group
 
         if deriv is True:
-            plt.ylabel('$d[\mu(E)] / dE$')
+            plt.ylabel(r'$d[\mu(E)] / dE$')
             plt.plot(g.energy, g.dmude, label=self.name + ' derivative')
             y = numpy.interp(g.e0, g.energy, g.dmude)
             plt.scatter(g.e0, y, marker='d', color='orchid')
         elif flat is True:
-            plt.ylabel('flattened $\mu(E)$')
+            plt.ylabel(r'flattened $\mu(E)$')
             plt.plot(g.energy, g.flat, label=self.name + ' flattened')
             y = numpy.interp(g.e0, g.energy, g.flat)
             plt.scatter(g.e0, y, marker='d', color='orchid')
         elif norm is True:
-            plt.ylabel('normalized $\mu(E)$')
+            plt.ylabel(r'normalized $\mu(E)$')
             plt.plot(g.energy, g.norm, label=self.name + ' normalized')
             y = numpy.interp(g.e0, g.energy, g.norm)
             plt.scatter(g.e0, y, marker='d', color='orchid')
         else:
-            plt.ylabel('$\mu(E)$')
+            plt.ylabel(r'$\mu(E)$')
             if bkg is True:
                 plt.plot(g.energy, g.bkg, label='background', color='C1')
                 y = numpy.interp(g.e0, g.energy, g.mu)
@@ -479,7 +479,7 @@ class Pandrosus():
                 y = numpy.interp(g.e0+ktoe(g.autobk_details.kmax), g.energy, g.mu)
                 plt.scatter(g.e0+ktoe(g.autobk_details.kmax), y, marker=2, color='tan')
                 
-            plt.plot(g.energy, g.mu, label='$\mu(E)$', color='C0')
+            plt.plot(g.energy, g.mu, label=r'$\mu(E)$', color='C0')
             if pre is True:
                 plt.plot(g.energy, g.pre_edge, label='pre-edge', color='C2')
                 y = numpy.interp(g.e0+g.pre_edge_details.pre1, g.energy, g.mu)
@@ -521,7 +521,7 @@ class Pandrosus():
         max_i0     = g.i0.max()
         max_signal = self.signal.max()
 
-        plt.plot(g.energy, g.mu, label='$\mu(E)$')
+        plt.plot(g.energy, g.mu, label=r'$\mu(E)$')
         plt.plot(g.energy, g.i0*max_xmu/max_i0, label='$I_0$')
         plt.plot(g.energy, self.signal*max_xmu/max_signal, label='signal')
         plt.legend(loc='best', shadow=True)
@@ -540,7 +540,7 @@ class Pandrosus():
         plt.xlabel(self.xe)
         plt.title(self.name + ' in energy')
         plt.grid(which='major', axis='both')
-        plt.ylabel('normalized $\mu(E)$')
+        plt.ylabel(r'normalized $\mu(E)$')
         plt.plot(g.energy, g.flat, label=self.name + ' normalized')
         #y = numpy.interp(g.e0, g.energy, g.norm)
         #plt.scatter(g.e0, y, marker='d', color='orchid')
@@ -570,11 +570,11 @@ class Pandrosus():
             fig = plt.figure()
             fig.set_facecolor((0.9, 0.9, 0.9))
         plt.xlabel(self.xk)
-        plt.ylabel(f"$k^{kw}\cdot\chi(k)$  ($\AA^{{-{kw}}}$)")
+        plt.ylabel(rf"$k^{kw}\cdot\chi(k)$  ($\AA^{{-{kw}}}$)")
         plt.title(self.name + ' in k-space')
         plt.grid(which='major', axis='both')
         y = self.group.chi*self.group.k**kw
-        plt.plot(self.group.k, y, label='$\chi(k)$')
+        plt.plot(self.group.k, y, label=r'$\chi(k)$')
         if win:
             plt.plot(self.group.k, self.group.kwin*y.max()*1.1, label='window', color='C8')
         #color_counter += 1
@@ -636,33 +636,33 @@ class Pandrosus():
         color_counter = 0
         ylabel = False
         if 'e' in parts.lower():
-            plt.ylabel(f"$|\chi(R)|$  ($\AA^{{-{kw+1}}}$)")
+            plt.ylabel(rf"$|\chi(R)|$  ($\AA^{{-{kw+1}}}$)")
             ylabel = True
-            plt.plot(self.group.r, self.group.chir_mag, label='Env[$\chi(R)$]', color='C%d'%color_counter)
+            plt.plot(self.group.r, self.group.chir_mag, label=r'Env[$\chi(R)$]', color='C%d'%color_counter)
             plt.plot(self.group.r, -1*self.group.chir_mag, color='C%d'%color_counter)
             color_counter += 1
         if 'm' in parts.lower():
-            plt.ylabel(f"$|\chi(R)|$  ($\AA^{{-{kw+1}}}$)")
+            plt.ylabel(rf"$|\chi(R)|$  ($\AA^{{-{kw+1}}}$)")
             ylabel = True
-            plt.plot(self.group.r, self.group.chir_mag, label='$|\chi(R)|$', color='C%d'%color_counter)
+            plt.plot(self.group.r, self.group.chir_mag, label=r'$|\chi(R)|$', color='C%d'%color_counter)
             color_counter += 1
         if 'r' in parts.lower():
             if not ylabel:
-                plt.ylabel(f"RE[$\chi$(R)]  ($\AA^{{-{kw+1}}}$)")
+                plt.ylabel(rf"RE[$\chi$(R)]  ($\AA^{{-{kw+1}}}$)")
                 ylabel = True
-            plt.plot(self.group.r, self.group.chir_re, label='RE[$\chi(R)$]', color='C%d'%color_counter)
+            plt.plot(self.group.r, self.group.chir_re, label=r'RE[$\chi(R)$]', color='C%d'%color_counter)
             color_counter += 1
         if 'i' in parts.lower():
             if not ylabel:
-                plt.ylabel(f"IM[$\chi$(R)]  ($\AA^{{-{kw+1}}}$)")
+                plt.ylabel(rf"IM[$\chi$(R)]  ($\AA^{{-{kw+1}}}$)")
                 ylabel = True
-            plt.plot(self.group.r, self.group.chir_im, label='IM[$\chi(R)$]', color='C%d'%color_counter)
+            plt.plot(self.group.r, self.group.chir_im, label=r'IM[$\chi(R)$]', color='C%d'%color_counter)
             color_counter += 1
         if 'p' in parts.lower():
             if not ylabel:
-                plt.ylabel('Phase($\chi$(R))')
+                plt.ylabel(r'Phase($\chi$(R))')
                 ylabel = True
-            plt.plot(self.group.r, self.group.chir_pha, label='Phase[$\chi(R)$]', color='C%d'%color_counter)
+            plt.plot(self.group.r, self.group.chir_pha, label=r'Phase[$\chi(R)$]', color='C%d'%color_counter)
             color_counter += 1
         if win and parts.lower() != 'p':
             plt.plot(self.group.r, self.group.rwin*y.max()*1.1, label='window', color='C8')
@@ -724,33 +724,33 @@ class Pandrosus():
         color_counter = 0
         ylabel = False
         if 'e' in parts.lower():
-            plt.ylabel(f"|$\chi$(q)|  ($\AA^{{-{kw}}}$)")
+            plt.ylabel(rf"|$\chi$(q)|  ($\AA^{{-{kw}}}$)")
             ylabel = True
-            plt.plot(self.group.q, self.group.chiq_mag, label='Env[$\chi(R)$]', color='C%d'%color_counter)
+            plt.plot(self.group.q, self.group.chiq_mag, label=r'Env[$\chi(R)$]', color='C%d'%color_counter)
             plt.plot(self.group.q, -1*self.group.chiq_mag, color='C%d'%color_counter)
             color_counter += 1
         if 'm' in parts.lower():
-            plt.ylabel(f"|$\chi$(q)|  ($\AA^{{-{kw}}}$)")
+            plt.ylabel(rf"|$\chi$(q)|  ($\AA^{{-{kw}}}$)")
             ylabel = True
-            plt.plot(self.group.q, self.group.chiq_mag, label='$|\chi(R)|$', color='C%d'%color_counter)
+            plt.plot(self.group.q, self.group.chiq_mag, label=r'$|\chi(R)|$', color='C%d'%color_counter)
             color_counter += 1
         if 'r' in parts.lower():
             if not ylabel:
-                plt.ylabel(f"RE[$\chi$(q)]  ($\AA^{{-{kw}}}$)")
+                plt.ylabel(rf"RE[$\chi$(q)]  ($\AA^{{-{kw}}}$)")
                 ylabel = True
-            plt.plot(self.group.q, self.group.chiq_re, label='RE[$\chi(R)$]', color='C%d'%color_counter)
+            plt.plot(self.group.q, self.group.chiq_re, label=r'RE[$\chi(R)$]', color='C%d'%color_counter)
             color_counter += 1
         if 'i' in parts.lower():
             if not ylabel:
-                plt.ylabel(f"IM[$\chi$(q)]  ($\AA^{{-{kw}}}$)")
+                plt.ylabel(rf"IM[$\chi$(q)]  ($\AA^{{-{kw}}}$)")
                 ylabel = True
-            plt.plot(self.group.q, self.group.chiq_im, label='IM[$\chi(R)$]', color='C%d'%color_counter)
+            plt.plot(self.group.q, self.group.chiq_im, label=r'IM[$\chi(R)$]', color='C%d'%color_counter)
             color_counter += 1
         if 'p' in parts.lower():
             if not ylabel:
-                plt.ylabel('Phase($\chi$(q))')
+                plt.ylabel(r'Phase($\chi$(q))')
                 ylabel = True
-            plt.plot(self.group.q, self.group.chiq_pha, label='Phase[$\chi(R)$]', color='C%d'%color_counter)
+            plt.plot(self.group.q, self.group.chiq_pha, label=r'Phase[$\chi(R)$]', color='C%d'%color_counter)
             color_counter += 1
         if win and parts.lower() != 'p':
             plt.plot(self.group.k, self.group.kwin*y.max()*1.1, label='window', color='C8')
@@ -774,8 +774,8 @@ class Pandrosus():
         else:
             fig = plt.figure()
             fig.set_facecolor((0.9, 0.9, 0.9))
-        plt.xlabel('wavenumber ($\AA^{-1}$)')
-        plt.ylabel('$\chi$(k)')
+        plt.xlabel(r'wavenumber ($\AA^{-1}$)')
+        plt.ylabel(r'$\chi$(k)')
         plt.title(self.name + ' in k-space and q-space')
         plt.xlim(right=self.group.k.max())
         plt.grid(which='major', axis='both')
@@ -795,27 +795,27 @@ class Pandrosus():
         self.do_xftf(kw=kw)
 
         mu = fig.add_subplot(gs[0, :], facecolor=self.facecolor)
-        mu.plot(self.group.energy, self.group.mu, label='$\mu(E)$', color='C0')
+        mu.plot(self.group.energy, self.group.mu, label=r'$\mu(E)$', color='C0')
         mu.set_title(self.title)
-        mu.set_ylabel('$\mu(E)$')
+        mu.set_ylabel(r'$\mu(E)$')
         if self.mode == 'icit':
-            mu.set_ylabel('$\mu(E)$ (It is new IC)')
+            mu.set_ylabel(r'$\mu(E)$ (It is new IC)')
         elif self.mode == 'ici0':
-            mu.set_ylabel('$\mu(E)$ (I0 is new IC)')
+            mu.set_ylabel(r'$\mu(E)$ (I0 is new IC)')
         mu.set_xlabel('energy (eV)')
 
         chik = fig.add_subplot(gs[1, 0], facecolor=self.facecolor)
         #chik.set_xlim(left=0)
         y = self.group.chi*self.group.k**kw
-        chik.plot(self.group.k, y, label='$\chi(k)$', color='C0')
-        chik.set_ylabel(f'$\chi(k)$  ($\AA^{{-{kw}}}$)')
-        chik.set_xlabel('wavenumber ($\AA^{-1}$)')
+        chik.plot(self.group.k, y, label=r'$\chi(k)$', color='C0')
+        chik.set_ylabel(rf'$\chi(k)$  ($\AA^{{-{kw}}}$)')
+        chik.set_xlabel(r'wavenumber ($\AA^{-1}$)')
 
         chir = fig.add_subplot(gs[1, 1], facecolor=self.facecolor)
         chir.set_xlim(0,6)
-        chir.plot(self.group.r, self.group.chir_mag, label='$|\chi(R)|$', color='C0')
-        chir.set_ylabel(f"$|\chi(R)|$  ($\AA^{{-{kw+1}}}$)")
-        chir.set_xlabel('radial distance ($\AA$)')
+        chir.plot(self.group.r, self.group.chir_mag, label=r'$|\chi(R)|$', color='C0')
+        chir.set_ylabel(rf"$|\chi(R)|$  ($\AA^{{-{kw+1}}}$)")
+        chir.set_xlabel(r'radial distance ($\AA$)')
 
         fig.align_labels()
         if matplotlib.get_backend().lower() != 'agg':
@@ -937,9 +937,9 @@ class Kekropidai():
         '''
         plt.cla()
         plt.xlabel(self.groups[0].xe)
-        plt.ylabel('$\mu(E)$')
+        plt.ylabel(r'$\mu(E)$')
         plt.grid(which='major', axis='both')
-        title = '$\mu$(E)'
+        title = r'$\mu$(E)'
         if self.name is not None:
             title = self.name
         if deriv is True:
@@ -989,7 +989,7 @@ class Kekropidai():
         '''
         plt.cla()
         plt.xlabel(self.groups[0].xk)
-        plt.ylabel(f"$k^{{{kw}}}\cdot\chi(k)$  ($\AA^{{-{kw}}}$)")
+        plt.ylabel(rf"$k^{{{kw}}}\cdot\chi(k)$  ($\AA^{{-{kw}}}$)")
         plt.grid(which='major', axis='both')
         title = 'EXAFS data'
         if self.name is not None:
@@ -1025,16 +1025,16 @@ class Kekropidai():
             title = self.name + ' in R-space'
         if part.lower() == 'r':
             plt.title(f"Real part of {title}")
-            plt.ylabel(f"RE[$\chi$(R)]  ($\AA^{{-{kw+1}}}$)")
+            plt.ylabel(rf"RE[$\chi$(R)]  ($\AA^{{-{kw+1}}}$)")
         elif part.lower() == 'i':
             plt.title(f"Imaginary part of {title}")
-            plt.ylabel(f"Im[$\chi$(R)]  ($\AA^{{-{kw+1}}}$)")
+            plt.ylabel(rf"Im[$\chi$(R)]  ($\AA^{{-{kw+1}}}$)")
         elif part.lower() == 'p':
             plt.title(f"Phase of {title}")
-            plt.ylabel(f"Phase[$\chi$(R)]")
+            plt.ylabel(rf"Phase[$\chi$(R)]")
         else:
             plt.title(f"Magnitude of {title}")
-            plt.ylabel(f"|$\chi$(R)|  ($\AA^{{-{kw+1}}}$)")
+            plt.ylabel(rf"|$\chi$(R)|  ($\AA^{{-{kw+1}}}$)")
             
         for g in self.groups:
             g.prep()
@@ -1076,16 +1076,16 @@ class Kekropidai():
             title = self.name + ' in q-space'
         if part.lower() == 'r':
             plt.title(f"Real part of {title}")
-            plt.ylabel(f"RE[$\chi$(q)]  ($\AA^{{-{kw}}}$)")
+            plt.ylabel(rf"RE[$\chi$(q)]  ($\AA^{{-{kw}}}$)")
         elif part.lower() == 'i':
             plt.title(f"Imaginary part of {title}")
-            plt.ylabel(f"Im[$\chi$(q)]  ($\AA^{{-{kw}}}$)")
+            plt.ylabel(rf"Im[$\chi$(q)]  ($\AA^{{-{kw}}}$)")
         elif part.lower() == 'p':
             plt.title(f"Phase of {title}")
-            plt.ylabel('Phase[$\chi$(q)]')
+            plt.ylabel(r'Phase[$\chi$(q)]')
         else:
             plt.title(f"Magnitude of {title}")
-            plt.ylabel(f"|$\chi$(q)|  ($\AA^{{-{kw}}}$)")
+            plt.ylabel(rf"|$\chi$(q)|  ($\AA^{{-{kw}}}$)")
             
         for g in self.groups:
             g.prep()

@@ -41,7 +41,7 @@ def file_resource(record):
         for d in docs:
             if d[0] == 'resource':
                 this = os.path.join(d[1]['root'], d[1]['resource_path'])
-                if '_%d' in this or re.search('%\d\.\dd', this) is not None:
+                if '_%d' in this or re.search(r'%\d\.\dd', this) is not None:
                     this = this % 0
                 found.append(this)
         return(found)
@@ -51,7 +51,7 @@ def file_resource(record):
         for d in docs:
             if d[0] == 'resource':
                 rp = d[1]['resource_path']
-                if '_%d' in rp or re.search('%\d\.\dd', rp) is not None:
+                if '_%d' in rp or re.search(r'%\d\.\dd', rp) is not None:
                     this = rp % 0
                 found.append(rp)
         return(found)
